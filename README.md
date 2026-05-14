@@ -32,6 +32,10 @@ pnpm run build
 - `artifacts/api-server` – Weather API service
 - `lib/` – Shared packages (`api-client-react`, `api-spec`, `api-zod`, `db`)
 
+## Vercel
+
+Keep the Vercel project **root directory** as the repository root (not `artifacts/skypulse`). Install and build are set in `vercel.json` so workspace packages resolve and static files emit to `artifacts/skypulse/dist/public`.
+
 ## Author
 
 NeoSalviJo  

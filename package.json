@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "preinstall": "node -e \"try{require('fs').unlinkSync('package-lock.json')}catch(_){} try{require('fs').unlinkSync('yarn.lock')}catch(_){} const u=process.env.npm_config_user_agent||''; if(!u.startsWith('pnpm/')){console.error('Use pnpm instead'); process.exit(1)}\"",
+    "preinstall": "node -e \"try{require('fs').unlinkSync('package-lock.json')}catch(_){} try{require('fs').unlinkSync('yarn.lock')}catch(_){} const u=process.env.npm_config_user_agent||''; if(!u.includes('pnpm/')){console.error('Use pnpm install from the repo root'); process.exit(1)}\"",
     "dev": "npm --prefix artifacts/skypulse run dev",
     "dev:api": "npm --prefix artifacts/api-server run dev",
     "dev:web": "npm --prefix artifacts/skypulse run dev",
