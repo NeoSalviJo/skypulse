@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { geocodeSearch } from "@workspace/api-client-react";
 import type { GeocodeSuggestion } from "@workspace/api-client-react";
 import { toast } from "@/hooks/use-toast";
+import { fetchGeocodeDirect } from "@/lib/client-geocode";
 interface SearchBarProps {
     onSelectLocation: (location: GeocodeSuggestion) => void;
     isLoading?: boolean;
@@ -56,8 +57,16 @@ export function SearchBar({ onSelectLocation, isLoading, variant = "hero", curre
         const t = q.trim();
         setIsFetching(true);
         try {
-            const res = await geocodeSearch({ q: t });
-            setSuggestions(res.results ?? []);
+            let list: GeocodeSuggestion[] = [];
+            try {
+                const res = await geocodeSearch({ q: t });
+                list = res.results ?? [];
+            } catch {
+            }
+            if (list.length === 0) {
+                list = await fetchGeocodeDirect(t);
+            }
+            setSuggestions(list);
             setIsOpen(true);
             setHighlightedIdx(-1);
         }
@@ -95,8 +104,15 @@ export function SearchBar({ onSelectLocation, isLoading, variant = "hero", curre
             return;
         setIsFetching(true);
         try {
-            const res = await geocodeSearch({ q });
-            const results = res.results ?? [];
+            let results: GeocodeSuggestion[] = [];
+            try {
+                const res = await geocodeSearch({ q });
+                results = res.results ?? [];
+            } catch {
+            }
+            if (results.length === 0) {
+                results = await fetchGeocodeDirect(q);
+            }
             if (results.length > 0) {
                 handleSelect(results[0]);
                 return;

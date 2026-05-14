@@ -2,5 +2,5 @@
   "installCommand": "pnpm install",
   "buildCommand": "pnpm --filter @workspace/skypulse run build",
   "outputDirectory": "artifacts/skypulse/dist/public",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [{ "source": "/((?!api/|assets/).*)", "destination": "/index.html" }]
 }

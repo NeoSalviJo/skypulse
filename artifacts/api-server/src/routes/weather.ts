@@ -288,10 +288,10 @@ async function geocodeUsZipOpenMeteo(zip5: string): Promise<GeoSuggestion[]> {
 }
 async function geocodeUsZip(zip: string): Promise<GeoSuggestion[]> {
     const zip5 = zip.trim().slice(0, 5);
-    const nominatim = await geocodeUsZipNominatim(zip5);
-    if (nominatim.length)
-        return nominatim;
-    return geocodeUsZipOpenMeteo(zip5);
+    const openMeteo = await geocodeUsZipOpenMeteo(zip5);
+    if (openMeteo.length)
+        return openMeteo;
+    return geocodeUsZipNominatim(zip5);
 }
 async function geocodeCityName(name: string): Promise<GeoSuggestion[]> {
     const url = new URL("https://geocoding-api.open-meteo.com/v1/search");
