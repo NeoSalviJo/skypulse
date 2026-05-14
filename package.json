@@ -1,0 +1,22 @@
+{
+  "name": "workspace",
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {
+    "preinstall": "node -e \"try{require('fs').unlinkSync('package-lock.json')}catch(_){} try{require('fs').unlinkSync('yarn.lock')}catch(_){} const u=process.env.npm_config_user_agent||''; if(!u.startsWith('pnpm/')){console.error('Use pnpm instead'); process.exit(1)}\"",
+    "dev": "npm --prefix artifacts/skypulse run dev",
+    "dev:api": "npm --prefix artifacts/api-server run dev",
+    "dev:web": "npm --prefix artifacts/skypulse run dev",
+    "dev:all": "concurrently -k -n api,web -c blue,magenta \"npm run dev:api\" \"npm run dev:web\"",
+    "install:deps": "npx --yes pnpm@9 install",
+    "build": "npx --yes pnpm@9 run typecheck && npx --yes pnpm@9 -r --if-present run build",
+    "typecheck:libs": "tsc --build",
+    "typecheck": "npx --yes pnpm@9 run typecheck:libs && npx --yes pnpm@9 -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+  },
+  "private": true,
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "typescript": "~5.9.2",
+    "prettier": "^3.8.1"
+  }
+}

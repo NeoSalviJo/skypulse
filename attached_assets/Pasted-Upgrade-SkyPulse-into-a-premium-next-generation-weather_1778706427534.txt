@@ -1,0 +1,94 @@
+Upgrade SkyPulse into a premium next-generation weather experience.
+
+Do NOT rebuild the app from scratch. Improve the existing design, animations, visuals, and user experience while keeping the current weather system and security working.
+
+I want the app to feel cinematic, immersive, modern, and alive like a real premium product.
+
+MAIN GOALS:
+- Make the app feel smooth, futuristic, and interactive
+- Keep the UI clean and not overcrowded
+- Improve animations, weather effects, and transitions
+- Make the experience feel premium on desktop and mobile
+
+VISUAL & UI IMPROVEMENTS:
+- Improve glassmorphism cards with better blur, transparency, glow, and shadows
+- Add subtle floating animation to cards
+- Add mouse movement parallax effect
+- Add smooth fade/slide transitions between searches
+- Improve typography and spacing
+- Add ambient animated lighting in the background
+- Improve weather icon animations
+- Add cinematic blur around background edges
+- Add smooth loading skeletons
+- Add premium hover effects
+
+LIVE WEATHER BACKGROUND:
+- Show live animated weather scenes based on current weather:
+  - rain
+  - snow
+  - thunderstorms
+  - fog
+  - cloudy
+  - sunny
+  - windy
+- Change background based on time:
+  - sunrise
+  - daytime
+  - sunset
+  - night
+- Add animated stars, moon, clouds, rain particles, snow particles, fog layers, and lightning
+- Add subtle wind movement
+- Add smooth weather transitions between cities
+
+CITY IMAGE SYSTEM:
+- Fix incorrect city images
+- Use:
+  - city
+  - state/region
+  - country
+when searching for images
+- Prioritize correct local skyline and landmark images
+- Add image caching and fallback backgrounds
+- Add cinematic zoom/parallax effect to city images
+
+SEARCH SYSTEM:
+- Support worldwide cities and postal codes
+- Correctly detect:
+  - city names
+  - ZIP/postal codes
+  - coordinates
+- U.S. ZIP codes should automatically use country=US
+- Prevent incorrect matches like:
+  - Bayonne NJ showing France
+  - London Ontario showing UK
+- Add autocomplete suggestions with country flags
+- If multiple matches exist, allow users to choose the correct one
+
+NEW PREMIUM FEATURES:
+- Add AI weather summary:
+  Example:
+  “Cool and breezy tonight with light clouds.”
+- Add clothing recommendations
+- Add weather alerts
+- Add air quality
+- Add UV index
+- Add moon phase
+- Add sunrise/sunset animations
+- Add ambient weather sounds users can enable/disable
+- Add live radar/weather map
+- Add current location button
+- Add Celsius/Fahrenheit toggle
+- Add dark/light mode toggle
+
+ANIMATIONS:
+- Make everything smoother and more premium
+- Add cinematic transitions
+- Avoid lag or heavy performance issues
+- Optimize animations for mobile and desktop
+
+IMPORTANT:
+- Keep API keys secure on the backend only
+- Do not expose secrets in frontend code
+- Do not break the current weather API integration
+- Do not remove existing features
+- Improve the current app instead of replacing it

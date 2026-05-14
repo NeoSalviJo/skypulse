@@ -1,0 +1,678 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: SkyPulse Weather API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: weather
+    description: Weather data operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /weather/geocode:
+    get:
+      operationId: geocodeSearch
+      tags: [weather]
+      summary: Search locations for autocomplete
+      description: Returns geocoded location suggestions for a city name, ZIP/postal code, or coordinates
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          description: Search query — city name, ZIP/postal code, or lat,lon coordinates
+      responses:
+        "200":
+          description: Location suggestions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeocodeResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /weather/current:
+    get:
+      operationId: getCurrentWeather
+      tags: [weather]
+      summary: Get current weather
+      description: Returns current weather conditions for a city. API key is never exposed to the client.
+      parameters:
+        - name: city
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          description: City name to search for weather
+      responses:
+        "200":
+          description: Current weather data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentWeather"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: City not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /weather/forecast:
+    get:
+      operationId: getForecast
+      tags: [weather]
+      summary: Get 7-day forecast
+      description: Returns a 7-day daily forecast for a city
+      parameters:
+        - name: city
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          description: City name
+      responses:
+        "200":
+          description: 7-day forecast data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForecastResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: City not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /weather/hourly:
+    get:
+      operationId: getHourlyForecast
+      tags: [weather]
+      summary: Get hourly forecast
+      description: Returns hourly forecast for the next 24 hours for a city
+      parameters:
+        - name: city
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          description: City name
+      responses:
+        "200":
+          description: Hourly forecast data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HourlyResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: City not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /weather/alerts:
+    get:
+      operationId: getWeatherAlerts
+      tags: [weather]
+      summary: Get weather alerts
+      description: Returns active weather alerts for a city
+      parameters:
+        - name: city
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          description: City name
+      responses:
+        "200":
+          description: Weather alerts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertsResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: City not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /weather/summary:
+    get:
+      operationId: getWeatherSummary
+      tags: [weather]
+      summary: Get full weather summary
+      description: Returns current weather + hourly + 7-day forecast + alerts in one call. When lat/lon are provided they take precedence over geocoding city.
+      parameters:
+        - name: city
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          description: City display name
+        - name: lat
+          in: query
+          required: false
+          schema:
+            type: number
+            minimum: -90
+            maximum: 90
+          description: Latitude — when provided with lon, bypasses geocoding
+        - name: lon
+          in: query
+          required: false
+          schema:
+            type: number
+            minimum: -180
+            maximum: 180
+          description: Longitude — when provided with lat, bypasses geocoding
+        - name: country
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+          description: Country display name (used when lat/lon are provided)
+        - name: timezone
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 50
+          description: IANA timezone (used when lat/lon are provided; defaults to auto-detect)
+      responses:
+        "200":
+          description: Full weather summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeatherSummary"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: City not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    GeocodeSuggestion:
+      type: object
+      required:
+        - id
+        - name
+        - country
+        - countryCode
+        - lat
+        - lon
+        - displayName
+        - timezone
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          description: Primary city/place name
+        region:
+          type: ["string", "null"]
+          description: State, province, or administrative region
+        country:
+          type: string
+          description: Full country name
+        countryCode:
+          type: string
+          description: ISO 3166-1 alpha-2 country code (e.g. "US", "GB")
+        lat:
+          type: number
+        lon:
+          type: number
+        displayName:
+          type: string
+          description: Full formatted display string e.g. "Bayonne, New Jersey, United States"
+        timezone:
+          type: string
+          description: IANA timezone identifier
+
+    GeocodeResponse:
+      type: object
+      required:
+        - results
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/GeocodeSuggestion"
+
+    CurrentWeather:
+      type: object
+      required:
+        - city
+        - country
+        - temperature
+        - feelsLike
+        - humidity
+        - windSpeed
+        - windDirection
+        - uvIndex
+        - condition
+        - conditionCode
+        - icon
+        - description
+        - visibility
+        - pressure
+        - dewPoint
+        - cloudCover
+        - sunrise
+        - sunset
+        - timezone
+        - lat
+        - lon
+        - isDay
+      properties:
+        city:
+          type: string
+        country:
+          type: string
+        lat:
+          type: number
+        lon:
+          type: number
+        timezone:
+          type: string
+        temperature:
+          type: number
+          description: Temperature in Celsius
+        feelsLike:
+          type: number
+          description: Feels-like temperature in Celsius
+        humidity:
+          type: integer
+          description: Humidity percentage
+        windSpeed:
+          type: number
+          description: Wind speed in km/h
+        windDirection:
+          type: integer
+          description: Wind direction in degrees
+        uvIndex:
+          type: number
+          description: UV index value
+        condition:
+          type: string
+          description: Human-readable weather condition (e.g. "Sunny", "Rain")
+        conditionCode:
+          type: string
+          description: Machine-readable condition key (e.g. "clear", "rain", "snow", "storm", "cloudy", "night")
+        icon:
+          type: string
+          description: Weather icon code
+        description:
+          type: string
+        visibility:
+          type: number
+          description: Visibility in km
+        pressure:
+          type: integer
+          description: Atmospheric pressure in hPa
+        dewPoint:
+          type: number
+          description: Dew point in Celsius
+        cloudCover:
+          type: integer
+          description: Cloud cover percentage
+        sunrise:
+          type: integer
+          description: Sunrise Unix timestamp
+        sunset:
+          type: integer
+          description: Sunset Unix timestamp
+        isDay:
+          type: boolean
+          description: Whether it is currently daytime
+        aqiUs:
+          type: ["integer", "null"]
+          description: US AQI value (null if unavailable)
+        aqiLabel:
+          type: ["string", "null"]
+          description: AQI label e.g. "Good", "Moderate", "Unhealthy"
+
+    HourlyPoint:
+      type: object
+      required:
+        - time
+        - temperature
+        - feelsLike
+        - humidity
+        - windSpeed
+        - condition
+        - conditionCode
+        - icon
+        - precipitationProbability
+        - isDay
+      properties:
+        time:
+          type: integer
+          description: Unix timestamp
+        temperature:
+          type: number
+        feelsLike:
+          type: number
+        humidity:
+          type: integer
+        windSpeed:
+          type: number
+        condition:
+          type: string
+        conditionCode:
+          type: string
+        icon:
+          type: string
+        precipitationProbability:
+          type: integer
+          description: Probability of precipitation (0-100)
+        isDay:
+          type: boolean
+
+    HourlyResponse:
+      type: object
+      required:
+        - city
+        - country
+        - hours
+      properties:
+        city:
+          type: string
+        country:
+          type: string
+        hours:
+          type: array
+          items:
+            $ref: "#/components/schemas/HourlyPoint"
+
+    DailyForecast:
+      type: object
+      required:
+        - date
+        - tempMax
+        - tempMin
+        - condition
+        - conditionCode
+        - icon
+        - humidity
+        - windSpeed
+        - precipitationProbability
+        - uvIndex
+        - sunrise
+        - sunset
+      properties:
+        date:
+          type: integer
+          description: Unix timestamp for the day
+        tempMax:
+          type: number
+          description: Max temperature in Celsius
+        tempMin:
+          type: number
+          description: Min temperature in Celsius
+        condition:
+          type: string
+        conditionCode:
+          type: string
+        icon:
+          type: string
+        humidity:
+          type: integer
+        windSpeed:
+          type: number
+        precipitationProbability:
+          type: integer
+        uvIndex:
+          type: number
+        sunrise:
+          type: integer
+        sunset:
+          type: integer
+
+    ForecastResponse:
+      type: object
+      required:
+        - city
+        - country
+        - days
+      properties:
+        city:
+          type: string
+        country:
+          type: string
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyForecast"
+
+    WeatherAlert:
+      type: object
+      required:
+        - event
+        - description
+        - start
+        - end
+        - severity
+      properties:
+        event:
+          type: string
+          description: Alert event type (e.g. "Thunderstorm Warning")
+        description:
+          type: string
+          description: Detailed alert description
+        start:
+          type: integer
+          description: Alert start Unix timestamp
+        end:
+          type: integer
+          description: Alert end Unix timestamp
+        severity:
+          type: string
+          description: Severity level (e.g. "Moderate", "Extreme")
+        senderName:
+          type: ["string", "null"]
+
+    AlertsResponse:
+      type: object
+      required:
+        - city
+        - country
+        - alerts
+      properties:
+        city:
+          type: string
+        country:
+          type: string
+        alerts:
+          type: array
+          items:
+            $ref: "#/components/schemas/WeatherAlert"
+
+    WeatherSummary:
+      type: object
+      required:
+        - current
+        - hourly
+        - forecast
+        - alerts
+        - dailySummary
+        - clothingAdvice
+      properties:
+        current:
+          $ref: "#/components/schemas/CurrentWeather"
+        hourly:
+          type: array
+          items:
+            $ref: "#/components/schemas/HourlyPoint"
+        forecast:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyForecast"
+        alerts:
+          type: array
+          items:
+            $ref: "#/components/schemas/WeatherAlert"
+        dailySummary:
+          type: string
+          description: Human-readable summary of the day's weather
+        clothingAdvice:
+          type: string
+          description: What to wear today based on weather conditions

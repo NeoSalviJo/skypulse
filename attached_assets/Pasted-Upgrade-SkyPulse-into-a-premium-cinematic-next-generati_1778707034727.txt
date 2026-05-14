@@ -1,0 +1,123 @@
+Upgrade SkyPulse into a premium cinematic next-generation weather experience. Do NOT rebuild the app from scratch. Improve and expand the current app while keeping the existing weather system, API integration, and backend security working.
+
+I want the app to feel immersive, futuristic, smooth, interactive, and visually impressive like a real premium product.
+
+Add premium features and improvements:
+
+* Hyper-realistic animated sky system
+
+  * moving clouds
+  * stars at night
+  * sunsets/sunrises
+  * birds during sunny weather
+  * airplanes occasionally flying across the sky
+  * lightning during storms
+  * fog layers
+  * atmospheric lighting
+
+* Live animated weather effects
+
+  * rain particles
+  * snow particles
+  * wind effects
+  * storm flashes
+  * drifting clouds
+  * weather reflections
+  * subtle water ripple effects
+
+* Cinematic weather transitions
+
+  * smooth fades between weather conditions
+  * smooth transitions between cities
+  * animated lighting changes based on time of day
+
+* Dynamic time system
+
+  * morning
+  * afternoon
+  * sunset
+  * evening
+  * night mode
+
+* Weather timelapse mode
+
+  * visually preview the next 24 hours of weather like a mini movie forecast
+
+* Interactive radar/weather map
+
+  * live precipitation
+  * storms
+  * cloud movement
+  * wind movement
+
+* Premium UI improvements
+
+  * stronger glassmorphism
+  * better spacing
+  * smoother animations
+  * floating cards
+  * hover effects
+  * cinematic blur
+  * mouse movement parallax
+  * responsive layout
+  * premium typography
+  * animated loading skeletons
+
+* Smarter weather features
+
+  * AI weather summary
+  * clothing recommendations
+  * driving conditions
+  * outdoor activity score
+  * UV index
+  * moon phase
+  * air quality
+  * sunrise/sunset animations
+  * severe weather alerts
+
+* Background city image system
+
+  * use accurate city + state + country matching
+  * avoid incorrect locations
+  * use premium skyline and local landmark images
+  * add cinematic zoom/parallax movement
+  * cache images for performance
+
+* Search improvements
+
+  * support worldwide cities and postal codes
+  * autocomplete suggestions
+  * country flags/icons
+  * multiple location selection when matches exist
+  * prevent incorrect ZIP/postal code matching
+
+* Optional ambient weather sounds
+
+  * rain ambience
+  * thunder
+  * wind
+  * calm night ambience
+  * allow users to turn sounds on/off
+
+* Make the app feel alive even before searching
+
+  * auto-detect user location if allowed
+  * otherwise show a beautiful animated default weather scene
+
+* Add subtle premium interactions
+
+  * animated counters
+  * smooth scrolling physics
+  * glowing cursor effects
+  * magnetic buttons
+  * animated weather icons
+
+IMPORTANT:
+
+* Keep the app fast and optimized
+* Do not overcrowd the UI
+* Keep the design clean and cinematic
+* Keep API keys secure on the backend only
+* Do not expose secrets in frontend code
+* Do not break the current app functionality
+* Improve the existing app instead of replacing it
