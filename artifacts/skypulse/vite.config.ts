@@ -1,6 +1,5 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 const rawPort = process.env.PORT ?? "5173";
@@ -14,7 +13,6 @@ export default defineConfig({
     base: basePath,
     plugins: [
         react(),
-        tailwindcss(),
         runtimeErrorOverlay(),
         ...(process.env.NODE_ENV !== "production" &&
             process.env.REPL_ID !== undefined
@@ -27,6 +25,9 @@ export default defineConfig({
             : []),
     ],
     resolve: {
+        // Windows + pnpm: avoid realpath into long `.pnpm/.../vite/...` paths where
+        // Vite's internal `import("./dist.js")` from `config.js` can fail to resolve.
+        preserveSymlinks: true,
         alias: {
             "@": path.resolve(import.meta.dirname, "src"),
             "@assets": path.resolve(import.meta.dirname, "..", "..", "attached_assets"),

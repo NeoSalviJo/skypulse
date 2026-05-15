@@ -55,10 +55,10 @@ export const DAY_PHASE_TINT: Record<DayPhase, {
     glow: string;
 }> = {
     "deep-night": {
-        a: "rgba(15,20,45,0.45)",
-        b: "rgba(8,10,30,0.25)",
-        vignette: "rgba(0,0,0,0.55)",
-        glow: "rgba(100,140,255,0.06)",
+        a: "rgba(36,52,118,0.38)",
+        b: "rgba(16,22,62,0.32)",
+        vignette: "rgba(2,4,22,0.78)",
+        glow: "rgba(140,132,246,0.14)",
     },
     sunrise: {
         a: "rgba(255,120,80,0.18)",
@@ -91,21 +91,21 @@ export const DAY_PHASE_TINT: Record<DayPhase, {
         glow: "rgba(255,120,100,0.16)",
     },
     dusk: {
-        a: "rgba(80,50,120,0.16)",
-        b: "rgba(40,30,80,0.14)",
-        vignette: "rgba(10,5,30,0.35)",
-        glow: "rgba(200,100,200,0.08)",
+        a: "rgba(110,74,148,0.22)",
+        b: "rgba(48,40,94,0.18)",
+        vignette: "rgba(10,8,38,0.48)",
+        glow: "rgba(220,150,210,0.12)",
     },
     "blue-hour": {
-        a: "rgba(40,60,140,0.20)",
-        b: "rgba(20,40,90,0.18)",
-        vignette: "rgba(5,10,40,0.40)",
-        glow: "rgba(80,120,220,0.10)",
+        a: "rgba(52,92,172,0.26)",
+        b: "rgba(28,48,118,0.22)",
+        vignette: "rgba(8,14,52,0.52)",
+        glow: "rgba(120,180,255,0.14)",
     },
     night: {
-        a: "rgba(20,30,70,0.28)",
-        b: "rgba(10,15,45,0.20)",
-        vignette: "rgba(0,0,20,0.50)",
-        glow: "rgba(120,160,255,0.05)",
+        a: "rgba(48,72,148,0.34)",
+        b: "rgba(22,32,92,0.28)",
+        vignette: "rgba(2,6,26,0.62)",
+        glow: "rgba(150,130,246,0.11)",
     },
 };

@@ -204,7 +204,7 @@ export function SearchBar({ onSelectLocation, isLoading, variant = "hero", curre
     if (variant === "compact") {
         return (<div ref={containerRef} className="relative w-full max-w-sm">
         <form onSubmit={handleSubmit} className="relative group">
-          <div className="relative flex items-center bg-black/20 dark:bg-black/40 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-full overflow-visible transition-all duration-300 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
+          <div className="relative flex items-center bg-black/20 dark:bg-[rgba(10,12,38,0.55)] backdrop-blur-[28px] border border-black/10 dark:border-[rgba(150,156,246,0.14)] rounded-full overflow-visible transition-all duration-300 focus-within:border-primary/55 focus-within:ring-2 focus-within:ring-primary/22 focus-within:shadow-[0_0_28px_-8px_rgba(139,124,246,0.35)]">
             {isFetching
                 ? <Loader2 className="absolute left-3 w-4 h-4 text-foreground/50 animate-spin"/>
                 : <Search className="absolute left-3 w-4 h-4 text-foreground/50"/>}
@@ -225,7 +225,7 @@ export function SearchBar({ onSelectLocation, isLoading, variant = "hero", curre
       <div ref={containerRef} className="relative w-full max-w-2xl">
         <form onSubmit={handleSubmit} className="relative group">
           <div className="absolute inset-0 rounded-3xl bg-black/5 dark:bg-white/5 blur-2xl transition-all duration-500 group-hover:bg-black/10 dark:group-hover:bg-white/10 group-focus-within:bg-primary/20"/>
-          <div className="relative flex items-center bg-white/20 dark:bg-black/40 backdrop-blur-2xl border border-black/10 dark:border-white/10 rounded-3xl overflow-visible transition-all duration-500 focus-within:border-primary/50 focus-within:shadow-[0_0_40px_-10px_rgba(var(--primary),0.3)] hover:shadow-lg">
+          <div className="relative flex items-center bg-white/20 dark:bg-[rgba(10,12,40,0.52)] backdrop-blur-[34px] border border-black/10 dark:border-[rgba(170,174,246,0.16)] rounded-3xl overflow-visible transition-all duration-500 focus-within:border-primary/55 focus-within:shadow-[0_0_48px_-12px_rgba(124,146,246,0.35)] hover:shadow-lg dark:hover:border-[rgba(190,200,255,0.22)]">
             {isFetching
             ? <Loader2 className="absolute left-6 w-6 h-6 text-foreground/50 animate-spin"/>
             : <Search className="absolute left-6 w-6 h-6 text-foreground/50"/>}

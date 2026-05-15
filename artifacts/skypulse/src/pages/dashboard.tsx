@@ -1,20 +1,41 @@
 import { useState, useEffect, useMemo } from "react";
-import { useGetWeatherSummary, getGetWeatherSummaryQueryKey, geocodeSearch } from "@workspace/api-client-react";
-import type { GeocodeSuggestion } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
+import {
+	geocodeSearch,
+	getGetWeatherSummaryQueryKey,
+	getWeatherSummary,
+} from "@workspace/api-client-react";
+import type { GeocodeSuggestion, WeatherSummary } from "@workspace/api-client-react";
+import { fetchWeatherSummaryDirect } from "@/lib/client-weather-summary";
 import { SearchBar } from "@/components/search-bar";
 import { AnimatedBackground } from "@/components/animated-background";
 import type { TimeOfDay } from "@/components/animated-background";
 import { WeatherDashboard } from "@/components/weather-dashboard";
 import { useTheme } from "@/components/theme-provider";
-import { useSettings } from "@/components/settings-provider";
-import { useCityImage } from "@/hooks/use-city-image";
-import type { CityImageLocation } from "@/hooks/use-city-image";
+import { useSettings, AMBIENT_SOUND_LABELS, AMBIENT_PRESET_LABELS, type AmbientSoundPreset } from "@/components/settings-provider";
 import { useWeatherAudio } from "@/hooks/use-weather-audio";
 import { getDayPhase, dayPhaseToSkyPeriod } from "@/lib/day-phase";
 import type { DayPhase } from "@/lib/day-phase";
-import { Moon, Sun, CloudLightning, MapPin, Loader2, Volume2, VolumeX } from "lucide-react";
+import { Moon, Sun, CloudLightning, MapPin, Loader2, Volume2, VolumeX, SlidersHorizontal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Slider } from "@/components/ui/slider";
+function isWeatherSummary(x: unknown): x is WeatherSummary {
+    return (typeof x === "object" && x !== null && "current" in x &&
+        typeof (x as WeatherSummary).current === "object" && (x as WeatherSummary).current !== null);
+}
+/** JSON/API occasionally yields numeric coordinates as strings; direct Open-Meteo needs real numbers. */
+function parseCoord(v: unknown): number | undefined {
+    if (typeof v === "number" && Number.isFinite(v))
+        return v;
+    if (typeof v === "string" && v.trim() !== "") {
+        const n = Number(v);
+        if (Number.isFinite(n))
+            return n;
+    }
+    return undefined;
+}
 function getTimeOfDay(): TimeOfDay {
     const h = new Date().getHours();
     if (h >= 5 && h < 11)
@@ -30,7 +51,18 @@ export default function Dashboard() {
     const [isAutoLocating, setIsAutoLocating] = useState(false);
     const [tick, setTick] = useState(0);
     const { theme, setTheme } = useTheme();
-    const { unit, toggleUnit } = useSettings();
+    const {
+        unit,
+        toggleUnit,
+        ambientVolume,
+        setAmbientVolume,
+        ambientCharacter,
+        setAmbientCharacter,
+        ambientPreset,
+        setAmbientPreset,
+    } = useSettings();
+
+    const ambientPresetOrder: AmbientSoundPreset[] = ["auto", "rain", "thunderstorm", "wind", "snow", "cloudy", "calm", "night"];
     useEffect(() => {
         const id = setInterval(() => setTick((n) => n + 1), 60000);
         return () => clearInterval(id);
@@ -55,21 +87,51 @@ export default function Dashboard() {
             }
         }, () => setIsAutoLocating(false), { timeout: 6000, maximumAge: 300000 });
     }, []);
-    const summaryParams = location
-        ? {
+    const summaryParams = useMemo(() => {
+        if (!location)
+            return { city: "" as const };
+        const lat = parseCoord(location.lat);
+        const lon = parseCoord(location.lon);
+        return {
             city: location.name,
-            lat: location.lat,
-            lon: location.lon,
+            lat,
+            lon,
             country: location.country,
             timezone: location.timezone,
-        }
-        : { city: "" };
-    const { data, isLoading, error } = useGetWeatherSummary(summaryParams, {
-        query: {
-            enabled: !!location,
-            retry: false,
-            queryKey: getGetWeatherSummaryQueryKey(summaryParams),
+        };
+    }, [location]);
+    const { data, isLoading, error } = useQuery({
+        queryKey: getGetWeatherSummaryQueryKey(summaryParams),
+        queryFn: async ({ signal }) => {
+            const p = summaryParams;
+            const lat = parseCoord(p.lat);
+            const lon = parseCoord(p.lon);
+            const hasCoords = lat !== undefined && lon !== undefined;
+            const withCoords = hasCoords ? { ...p, lat, lon } : p;
+            if (hasCoords) {
+                try {
+                    return await fetchWeatherSummaryDirect(withCoords);
+                }
+                catch (e) {
+                    if (signal.aborted)
+                        throw e;
+                    try {
+                        const apiRes = await getWeatherSummary(withCoords, { signal });
+                        if (isWeatherSummary(apiRes))
+                            return apiRes;
+                    }
+                    catch {
+                    }
+                    throw e instanceof Error ? e : new Error(String(e));
+                }
+            }
+            const apiRes = await getWeatherSummary(p, { signal });
+            if (isWeatherSummary(apiRes))
+                return apiRes;
+            throw new Error("Invalid weather response");
         },
+        enabled: !!location,
+        retry: false,
     });
     const rawConditionCode = data?.current?.conditionCode ?? "";
     const description = data?.current?.description ?? "";
@@ -82,28 +144,85 @@ export default function Dashboard() {
         return getDayPhase(Math.floor(Date.now() / 1000), data.current.sunrise, data.current.sunset);
     }, [data, tick]);
     const skyTime: TimeOfDay = useMemo(() => (dayPhase ? dayPhaseToSkyPeriod(dayPhase) : getTimeOfDay()), [dayPhase, tick]);
-    const { isEnabled: soundEnabled, toggle: toggleSound } = useWeatherAudio(conditionCode, data?.current.windSpeed ?? 0);
-    const cityImageLocation: CityImageLocation | null = location
-        ? { city: location.name, region: location.region, country: location.country }
-        : null;
-    const { imageUrl: cityImageUrl } = useCityImage(cityImageLocation);
+    const { isEnabled: soundEnabled, toggle: toggleSound } = useWeatherAudio(conditionCode, data?.current.windSpeed ?? 0, {
+        volume: ambientVolume,
+        character: ambientCharacter,
+        preset: ambientPreset,
+    });
     return (<main className="relative min-h-[100dvh] w-full overflow-x-hidden flex flex-col items-center">
-      <AnimatedBackground conditionCode={conditionCode} timeOfDay={skyTime} cityImageUrl={cityImageUrl} dayPhase={dayPhase} windSpeedKmh={data?.current.windSpeed ?? 0}/>
+      <AnimatedBackground conditionCode={conditionCode} timeOfDay={skyTime} dayPhase={dayPhase} windSpeedKmh={data?.current.windSpeed ?? 0}/>
 
       
       <AnimatePresence>
-        {location && (<motion.header initial={{ y: -100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className="fixed top-4 left-4 right-4 md:left-auto md:right-auto md:w-full md:max-w-6xl z-50 glass-card px-4 py-3 flex items-center justify-between mx-auto">
+        {location && (<motion.header initial={{ y: -100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className="fixed top-4 left-4 right-4 md:left-auto md:right-auto md:w-full md:max-w-6xl z-50 glass-card-premium px-4 py-3 flex items-center justify-between mx-auto rounded-[1.25rem]">
             <div className="flex items-center gap-3">
-              <CloudLightning className="w-6 h-6 text-primary"/>
+              <CloudLightning className="w-6 h-6 text-primary shrink-0 drop-shadow-[0_0_14px_rgba(167,139,250,0.55)]"/>
               <span className="font-serif font-bold text-xl tracking-tight hidden md:inline-block">SkyPulse</span>
             </div>
             <div className="flex-1 max-w-sm mx-4">
               <SearchBar onSelectLocation={setLocation} isLoading={isLoading} variant="compact" currentLocationName={location?.name}/>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={toggleSound} className={`w-10 h-10 rounded-full transition-colors ${soundEnabled ? "text-primary bg-primary/10" : ""}`} title={soundEnabled ? "Mute ambient sounds" : "Enable ambient sounds"}>
-                {soundEnabled ? <Volume2 className="w-4 h-4"/> : <VolumeX className="w-4 h-4"/>}
-              </Button>
+              <div className="flex items-center gap-0.5">
+                <Button variant="ghost" size="icon" onClick={toggleSound} className={`w-10 h-10 rounded-full transition-colors ${soundEnabled ? "text-primary bg-primary/10" : ""}`} title={soundEnabled ? "Mute ambient sounds" : "Enable ambient sounds"}>
+                  {soundEnabled ? <Volume2 className="w-4 h-4"/> : <VolumeX className="w-4 h-4"/>}
+                </Button>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button type="button" variant="ghost" size="icon" className="w-9 h-9 rounded-full text-foreground/80" title="Volume & sound style" aria-label="Open ambient sound settings">
+                      <SlidersHorizontal className="w-4 h-4"/>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" sideOffset={8} className="w-[min(22rem,calc(100vw-2rem))]">
+                    <p className="text-sm font-semibold">Ambient sound</p>
+                    <p className="text-xs text-foreground/55 mt-0.5 mb-4 leading-relaxed">
+                      Pick a mood or leave it on Auto to follow live conditions. Use the speaker to mute.
+                    </p>
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-xs font-medium mb-2">Sound type</p>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {ambientPresetOrder.map((key) => (
+                            <Button
+                              key={key}
+                              type="button"
+                              variant={ambientPreset === key ? "default" : "outline"}
+                              size="sm"
+                              className="h-auto min-h-9 px-2 py-1.5 text-left text-[11px] font-medium leading-tight whitespace-normal"
+                              onClick={() => setAmbientPreset(key)}
+                            >
+                              {AMBIENT_PRESET_LABELS[key].title}
+                            </Button>
+                          ))}
+                        </div>
+                        <p className="text-[11px] text-foreground/50 mt-2 leading-snug">
+                          {AMBIENT_PRESET_LABELS[ambientPreset].description}
+                        </p>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs font-medium mb-2">
+                          <span>Volume</span>
+                          <span className="tabular-nums text-foreground/60">{Math.round(ambientVolume * 100)}%</span>
+                        </div>
+                        <Slider value={[ambientVolume]} onValueChange={(v) => setAmbientVolume(v[0] ?? 0)} min={0} max={1} step={0.02}/>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium mb-2">Sound style</p>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {(["soft", "balanced", "immersive"] as const).map((key) => (
+                            <Button key={key} type="button" variant={ambientCharacter === key ? "default" : "outline"} size="sm" className="h-8 px-1 text-[11px] font-medium" onClick={() => setAmbientCharacter(key)}>
+                              {AMBIENT_SOUND_LABELS[key].title}
+                            </Button>
+                          ))}
+                        </div>
+                        <p className="text-[11px] text-foreground/50 mt-2.5 leading-snug">
+                          {AMBIENT_SOUND_LABELS[ambientCharacter].description}
+                        </p>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
               <Button variant="ghost" size="icon" onClick={toggleUnit} className="w-10 h-10 rounded-full font-medium" data-testid="button-toggle-unit">
                 {unit === "celsius" ? "°C" : "°F"}
               </Button>

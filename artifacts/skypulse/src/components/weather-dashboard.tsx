@@ -1,3 +1,4 @@
+import { useId } from "react";
 import type { WeatherSummary, WeatherAlert, DailyForecast } from "@workspace/api-client-react";
 import { Cloud, Droplets, Eye, Thermometer, Wind, Sunrise, AlertTriangle, Compass, Quote, Shirt, CalendarDays, Activity, Sun, Leaf, Car, Sparkles } from "lucide-react";
 import { format } from "date-fns";
@@ -119,6 +120,34 @@ function getMoonPhase(): {
         return { name: "Last Quarter", emoji: "🌗", percent: pct };
     return { name: "Waning Crescent", emoji: "🌘", percent: pct };
 }
+function LunarPhaseOrb({ cyclePct }: {
+    cyclePct: number;
+}) {
+    const uid = useId().replace(/:/g, "");
+    const gradId = `lunar-grad-${uid}`;
+    const filId = `lunar-glow-${uid}`;
+    const shift = Math.cos(cyclePct * Math.PI * 2) * 11.5;
+    return (
+        <svg viewBox="0 0 40 40" className="w-14 h-14 shrink-0 drop-shadow-[0_0_16px_rgba(180,200,255,0.35)]" aria-hidden>
+            <defs>
+                <radialGradient id={gradId} cx="32%" cy="28%" r="72%">
+                    <stop offset="0%" stopColor="#f7f9ff" />
+                    <stop offset="45%" stopColor="#c5d2f0" />
+                    <stop offset="100%" stopColor="#6474a4" />
+                </radialGradient>
+                <filter id={filId} x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="1.5" result="b" />
+                    <feMerge>
+                        <feMergeNode in="b" />
+                        <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                </filter>
+            </defs>
+            <circle cx="20" cy="20" r="13.8" fill={`url(#${gradId})`} filter={`url(#${filId})`} />
+            <ellipse cx={20 + shift * 0.06} cy="20" rx="12.8" ry="13.8" fill="rgba(8,10,28,0.92)" />
+        </svg>
+    );
+}
 const cardVariants = {
     hidden: { opacity: 0, y: 24, filter: "blur(4px)" },
     visible: (i: number) => ({
@@ -140,7 +169,7 @@ function Card({ children, className = "", index = 0, float = false, premium = fa
     float?: boolean;
     premium?: boolean;
 }) {
-    return (<motion.div custom={index} variants={cardVariants} initial="hidden" animate="visible" whileHover={float ? { y: -5, transition: { duration: 0.25, ease: "easeOut" } } : undefined} className={`${premium ? "glass-card-premium" : "glass-card"} glass-card-hover ${className}`}>
+    return (<motion.div custom={index} variants={cardVariants} initial="hidden" animate="visible" whileHover={float ? { y: -5, transition: { duration: 0.25, ease: "easeOut" } } : undefined} className={`${premium ? "glass-card-premium" : "glass-card"} glass-card-hover group ${className}`}>
       {children}
     </motion.div>);
 }
@@ -204,33 +233,38 @@ export function WeatherDashboard({ data, dayPhase }: WeatherDashboardProps) {
         
         <Card index={0} premium className="p-8 md:p-12 relative overflow-hidden flex flex-col justify-between min-h-[400px]">
           
+          <div className="pointer-events-none absolute inset-0 rounded-[inherit] opacity-[0.18] md:opacity-25 dark:opacity-100 transition-opacity" aria-hidden style={{
+              background:
+                  "radial-gradient(circle at 58% 42%, rgba(26, 42, 74, 0.42) 0%, transparent 56%), radial-gradient(circle at 12% 20%, rgba(88, 110, 180, 0.08) 0%, transparent 45%)",
+          }}/>
+
           <motion.div animate={{ opacity: [0.3, 0.55, 0.3], scale: [1, 1.05, 1] }} transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }} className="absolute -bottom-20 -right-20 w-96 h-96 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(96,165,250,0.18) 0%, transparent 70%)" }}/>
 
           <div className="relative z-10 flex flex-col md:flex-row justify-between items-start gap-4">
             <div>
               <h2 className="text-4xl md:text-6xl font-serif font-bold tracking-tight mb-1">{current.city}</h2>
-              <p className="text-foreground/60 text-xl font-light">{current.country}</p>
+              <p className="text-foreground/60 text-lg md:text-xl font-sans font-light tracking-tight">{current.country}</p>
             </div>
-            <div className="text-left md:text-right bg-black/10 dark:bg-white/5 py-2 px-4 rounded-2xl backdrop-blur-md shrink-0">
-              <p className="text-xl md:text-2xl font-medium">{format(new Date(), "EEEE, d MMM")}</p>
-              <p className="text-foreground/60">{format(new Date(), "h:mm a")}</p>
+            <div className="text-left md:text-right py-2.5 px-5 rounded-2xl shrink-0 border border-white/10 dark:border-white/[0.12] bg-black/14 dark:bg-[rgba(12,14,42,0.46)] backdrop-blur-[22px] backdrop-saturate-150 shadow-[0_8px_32px_rgba(0,0,0,0.25)]">
+              <p className="text-lg md:text-2xl font-semibold tracking-tight">{format(new Date(), "EEEE, d MMM")}</p>
+              <p className="text-foreground/55 text-sm md:text-base font-sans">{format(new Date(), "h:mm a")}</p>
             </div>
           </div>
 
-          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-end justify-between mt-10 gap-8">
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6">
-              <div className="relative min-w-[9rem] md:min-w-[12rem]">
-                <AnimatedTemperature value={Math.round(convertTemp(current.temperature))} suffix={tempSuffix} className="text-8xl md:text-[140px] font-sans font-bold tracking-tighter leading-none drop-shadow-[0_4px_48px_rgba(0,0,0,0.28)]" suffixClassName="text-4xl md:text-6xl absolute top-2 -right-8 md:-right-12"/>
-              </div>
-              <div className="flex flex-col gap-2 mt-2 md:mt-0 md:ml-2 lg:ml-6 items-center md:items-start">
-                <WeatherHeroVisual conditionCode={effectiveCondition} iconCode={current.icon} description={current.description} isDay={current.isDay}/>
-                <span className="text-3xl font-serif font-medium capitalize text-center md:text-left">
-                  {current.description}
-                </span>
-                <div className="flex gap-4 text-foreground/60 mt-1 text-lg">
-                  <span>H: {Math.round(convertTemp(forecast[0]?.tempMax || current.temperature))}°</span>
-                  <span>L: {Math.round(convertTemp(forecast[0]?.tempMin || current.temperature))}°</span>
-                </div>
+          <div className="relative z-10 mt-10 md:mt-12 grid grid-cols-1 md:grid-cols-[auto_minmax(0,1fr)] gap-y-8 gap-x-8 md:gap-x-10 md:items-end">
+            <div className="relative min-w-[9rem] md:min-w-[11rem]">
+              <AnimatedTemperature value={Math.round(convertTemp(current.temperature))} suffix={tempSuffix} className="text-8xl md:text-[140px] font-serif font-bold tracking-tighter leading-none drop-shadow-[0_4px_48px_rgba(0,0,0,0.28)]" suffixClassName="text-4xl md:text-6xl font-serif absolute top-2 -right-8 md:-right-12"/>
+            </div>
+            <div className="flex justify-center md:justify-end md:pb-2">
+              <WeatherHeroVisual conditionCode={effectiveCondition} iconCode={current.icon} description={current.description} isDay={current.isDay}/>
+            </div>
+            <div className="md:col-span-2 flex flex-col items-center text-center gap-2 pt-1">
+              <span className="text-2xl md:text-3xl font-serif font-medium capitalize text-foreground/95">
+                {current.description}
+              </span>
+              <div className="flex gap-6 text-foreground/55 text-base font-sans">
+                <span>H: {Math.round(convertTemp(forecast[0]?.tempMax || current.temperature))}°</span>
+                <span>L: {Math.round(convertTemp(forecast[0]?.tempMin || current.temperature))}°</span>
               </div>
             </div>
           </div>
@@ -455,7 +489,7 @@ export function WeatherDashboard({ data, dayPhase }: WeatherDashboardProps) {
 
           
           <div className="flex items-center gap-4 mt-5 pt-4 border-t border-white/[0.08]">
-            <span className="text-4xl leading-none">{moon.emoji}</span>
+            <LunarPhaseOrb cyclePct={moon.percent}/>
             <div>
               <p className="font-semibold text-sm">{moon.name}</p>
               <p className="text-xs text-foreground/40 mt-0.5">
@@ -511,7 +545,7 @@ function DetailCard({ icon, label, value, subValue, footer, index = 0, }: {
     footer?: React.ReactNode;
     index?: number;
 }) {
-    return (<motion.div custom={index} variants={cardVariants} initial="hidden" animate="visible" whileHover={{ y: -4, transition: { duration: 0.2 } }} className="glass-card glass-card-hover p-5 flex flex-col justify-between h-40 cursor-default">
+    return (<motion.div custom={index} variants={cardVariants} initial="hidden" animate="visible" whileHover={{ y: -4, transition: { duration: 0.2 } }} className="glass-card glass-card-hover group p-5 flex flex-col justify-between h-40 cursor-default">
       <div className="flex items-center gap-2 text-foreground/50 font-medium">
         <span className="text-primary/70">{icon}</span>
         <span className="text-xs uppercase tracking-wider">{label}</span>
