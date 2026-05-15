@@ -44,9 +44,67 @@ function makeNoiseSource(ctx: AudioContext, buf: AudioBuffer): AudioBufferSource
     return src;
 }
 type Stoppable = AudioBufferSourceNode | OscillatorNode;
+
+function playThunderBurst(ctx: AudioContext, master: GainNode, character: AmbientSoundCharacter): void {
+    const chr = CHARACTER_MIX[character] ?? 1;
+    const peak = Math.min(0.92, (0.38 + Math.random() * 0.22) * chr);
+    const len = Math.floor(ctx.sampleRate * (0.5 + Math.random() * 0.15));
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    let b = 0;
+    for (let i = 0; i < len; i++) {
+        const w = Math.random() * 2 - 1;
+        b = (b + w * 0.02) * 0.993;
+        d[i] = b;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 35 + Math.random() * 35;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 320 + Math.random() * 180;
+    const g = ctx.createGain();
+    const t = ctx.currentTime;
+    src.connect(hp);
+    hp.connect(lp);
+    lp.connect(g);
+    g.connect(master);
+    g.gain.value = 0;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(peak, t + 0.038 + Math.random() * 0.02);
+    const tail = t + 0.55 + Math.random() * 0.55;
+    g.gain.exponentialRampToValueAtTime(0.0008, tail);
+    src.start(t);
+    src.stop(tail + 0.06);
+}
+
+function scheduleStormThunder(ctx: AudioContext, master: GainNode, character: AmbientSoundCharacter): () => void {
+    let disposed = false;
+    let pending: number | undefined;
+    const kick = (): void => {
+        if (disposed || (ctx.state !== "running" && ctx.state !== "suspended"))
+            return;
+        if (ctx.state === "suspended")
+            void ctx.resume();
+        playThunderBurst(ctx, master, character);
+        const gap = 3500 + Math.random() * 8500;
+        pending = window.setTimeout(kick, gap);
+    };
+    pending = window.setTimeout(kick, 400 + Math.random() * 1200);
+
+    return () => {
+        disposed = true;
+        if (pending !== undefined)
+            clearTimeout(pending);
+    };
+}
+
 function createAmbientNodes(ctx: AudioContext, code: string, windKmh = 0, character: AmbientSoundCharacter = "balanced"): {
     master: GainNode;
     stoppable: Stoppable[];
+    cleanup?: () => void;
 } {
     const stoppable: Stoppable[] = [];
     const chr = CHARACTER_MIX[character] ?? 1;
@@ -103,25 +161,50 @@ function createAmbientNodes(ctx: AudioContext, code: string, windKmh = 0, charac
         addNoise(6200, "highshelf", 0.75, 0.032 + gust * 0.048);
         return { master, stoppable };
     }
+    let cleanupThunder: (() => void) | undefined;
     if (code === "rain" || code === "storm") {
-        addNoise(4000, "bandpass", 0.3, 0.55);
-        addNoise(700, "lowpass", 0.8, 0.3);
+        if (code === "storm") {
+            addNoise(4200, "bandpass", 0.32, scale(0.62));
+            addNoise(780, "lowpass", 0.78, scale(0.36));
+            addNoise(160, "lowpass", 0.95, scale(0.11));
+        }
+        else {
+            addNoise(4000, "bandpass", 0.3, 0.55);
+            addNoise(700, "lowpass", 0.8, 0.3);
+        }
     }
     if (code === "storm") {
         const osc = ctx.createOscillator();
         osc.type = "sawtooth";
-        osc.frequency.value = 55;
+        osc.frequency.value = 48 + Math.random() * 8;
         const filt = ctx.createBiquadFilter();
         filt.type = "lowpass";
-        filt.frequency.value = 180;
+        filt.frequency.value = 220;
         const g = ctx.createGain();
-        g.gain.value = scale(0.06);
-        addLFO(g.gain, 0.07, 0.04 * chr);
+        g.gain.value = scale(0.16);
+        addLFO(g.gain, 0.065, 0.09 * chr);
         osc.connect(filt);
         filt.connect(g);
         g.connect(master);
         osc.start();
         stoppable.push(osc);
+
+        const oscR = ctx.createOscillator();
+        oscR.type = "triangle";
+        oscR.frequency.value = 28;
+        const fR = ctx.createBiquadFilter();
+        fR.type = "lowpass";
+        fR.frequency.value = 95;
+        const gR = ctx.createGain();
+        gR.gain.value = scale(0.088);
+        addLFO(gR.gain, 0.05, 0.055 * chr);
+        oscR.connect(fR);
+        fR.connect(gR);
+        gR.connect(master);
+        oscR.start();
+        stoppable.push(oscR);
+
+        cleanupThunder = scheduleStormThunder(ctx, master, character);
     }
     if (code === "snow" || code === "cloudy" || code === "fog") {
         addWind(0.22, 350);
@@ -136,7 +219,7 @@ function createAmbientNodes(ctx: AudioContext, code: string, windKmh = 0, charac
     if (code === "clear" || code === "morning" || code === "afternoon" || code === "evening") {
         addWind(0.10, 280);
     }
-    return { master, stoppable };
+    return cleanupThunder !== undefined ? { master, stoppable, cleanup: cleanupThunder } : { master, stoppable };
 }
 export function useWeatherAudio(
     conditionCode: string,
@@ -156,7 +239,10 @@ export function useWeatherAudio(
     const ctxRef = useRef<AudioContext | null>(null);
     const stoppableRef = useRef<Stoppable[]>([]);
     const masterRef = useRef<GainNode | null>(null);
+    const ambientCleanupRef = useRef<(() => void) | null>(null);
     const stopAll = useCallback((fade = true) => {
+        ambientCleanupRef.current?.();
+        ambientCleanupRef.current = null;
         const ctx = ctxRef.current;
         const master = masterRef.current;
         if (!ctx || stoppableRef.current.length === 0)
@@ -185,9 +271,12 @@ export function useWeatherAudio(
             return;
         if (ctx.state === "suspended")
             void ctx.resume();
-        const { master, stoppable } = createAmbientNodes(ctx, code, wind, char);
+        ambientCleanupRef.current?.();
+        ambientCleanupRef.current = null;
+        const { master, stoppable, cleanup } = createAmbientNodes(ctx, code, wind, char);
         masterRef.current = master;
         stoppableRef.current = stoppable;
+        ambientCleanupRef.current = cleanup ?? null;
         const target = Math.min(1, Math.max(0, vol));
         master.gain.setValueAtTime(0, ctx.currentTime);
         master.gain.linearRampToValueAtTime(target, ctx.currentTime + 1.5);

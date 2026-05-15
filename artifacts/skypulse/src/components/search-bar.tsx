@@ -202,7 +202,7 @@ export function SearchBar({ onSelectLocation, isLoading, variant = "hero", curre
         })}
     </ul>);
     if (variant === "compact") {
-        return (<div ref={containerRef} className="relative w-full max-w-sm">
+        return (<div ref={containerRef} className="relative w-full max-w-none sm:max-w-sm">
         <form onSubmit={handleSubmit} className="relative group">
           <div className="relative flex items-center bg-black/20 dark:bg-[rgba(10,12,38,0.55)] backdrop-blur-[28px] border border-black/10 dark:border-[rgba(150,156,246,0.14)] rounded-full overflow-visible transition-all duration-300 focus-within:border-primary/55 focus-within:ring-2 focus-within:ring-primary/22 focus-within:shadow-[0_0_28px_-8px_rgba(139,124,246,0.35)]">
             {isFetching
@@ -227,14 +227,14 @@ export function SearchBar({ onSelectLocation, isLoading, variant = "hero", curre
           <div className="absolute inset-0 rounded-3xl bg-black/5 dark:bg-white/5 blur-2xl transition-all duration-500 group-hover:bg-black/10 dark:group-hover:bg-white/10 group-focus-within:bg-primary/20"/>
           <div className="relative flex items-center bg-white/20 dark:bg-[rgba(10,12,40,0.52)] backdrop-blur-[34px] border border-black/10 dark:border-[rgba(170,174,246,0.16)] rounded-3xl overflow-visible transition-all duration-500 focus-within:border-primary/55 focus-within:shadow-[0_0_48px_-12px_rgba(124,146,246,0.35)] hover:shadow-lg dark:hover:border-[rgba(190,200,255,0.22)]">
             {isFetching
-            ? <Loader2 className="absolute left-6 w-6 h-6 text-foreground/50 animate-spin"/>
-            : <Search className="absolute left-6 w-6 h-6 text-foreground/50"/>}
-            <Input ref={inputRef} type="text" value={value} onChange={(e) => handleChange(e.target.value)} onKeyDown={handleKeyDown} onFocus={() => suggestions.length > 0 && setIsOpen(true)} placeholder="City, ZIP code, or coordinates..." className="w-full h-16 pl-16 pr-32 bg-transparent border-0 text-xl font-medium focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-foreground/30" autoComplete="off" data-testid="input-city-search-hero"/>
-            <div className="absolute right-2 flex items-center gap-1">
+            ? <Loader2 className="absolute left-4 sm:left-6 w-5 h-5 sm:w-6 sm:h-6 text-foreground/50 animate-spin"/>
+            : <Search className="absolute left-4 sm:left-6 w-5 h-5 sm:w-6 sm:h-6 text-foreground/50"/>}
+            <Input ref={inputRef} type="text" value={value} onChange={(e) => handleChange(e.target.value)} onKeyDown={handleKeyDown} onFocus={() => suggestions.length > 0 && setIsOpen(true)} placeholder="City, ZIP code, or coordinates..." className="w-full min-h-[3.25rem] sm:h-16 pl-12 sm:pl-16 pr-28 sm:pr-32 bg-transparent border-0 text-base sm:text-xl font-medium focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-foreground/30 leading-tight text-pretty" autoComplete="off" data-testid="input-city-search-hero"/>
+            <div className="absolute right-2 flex flex-wrap items-center justify-end gap-1 max-w-[48%] sm:max-w-none">
               {value && (<Button type="button" variant="ghost" size="icon" onClick={clearInput} className="h-9 w-9 rounded-xl text-foreground/40 hover:text-foreground">
                   <X className="w-4 h-4"/>
                 </Button>)}
-              <Button type="submit" disabled={isLoading || !value.trim() || value.trim().length < 2} className="h-12 px-6 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium shadow-lg" data-testid="button-city-search-hero">
+              <Button type="submit" disabled={isLoading || !value.trim() || value.trim().length < 2} className="h-11 sm:h-12 px-4 sm:px-6 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium shadow-lg shrink-0 text-sm sm:text-base" data-testid="button-city-search-hero">
                 {isLoading ? <Loader2 className="w-5 h-5 animate-spin"/> : "Search"}
               </Button>
             </div>

@@ -1,5 +1,5 @@
 import type { WeatherSummary } from "@workspace/api-client-react";
-import { Camera, Dumbbell, Car, Sparkles, Droplets, Moon, Sun, Wind, Activity, } from "lucide-react";
+import { Camera, Dumbbell, Car, Droplets, Moon, Sun, Wind, Activity, ShieldAlert, } from "lucide-react";
 import { motion } from "framer-motion";
 import { differenceInMinutes } from "date-fns";
 import type { DayPhase } from "@/lib/day-phase";
@@ -31,7 +31,7 @@ export function buildSmartInsights(data: WeatherSummary, dayPhase: DayPhase | nu
     if (current.uvIndex >= 8 && current.isDay) {
         items.push({
             id: "uv",
-            icon: <Sparkles className="w-4 h-4"/>,
+            icon: <ShieldAlert className="w-4 h-4"/>,
             title: "Skin & UV",
             body: `UV index ${current.uvIndex} — use SPF 30+ and reapply every 2h if you are outside.`,
         });

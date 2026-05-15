@@ -1,6 +1,6 @@
 import { useId } from "react";
 import type { WeatherSummary, WeatherAlert, DailyForecast } from "@workspace/api-client-react";
-import { Cloud, Droplets, Eye, Thermometer, Wind, Sunrise, AlertTriangle, Compass, Quote, Shirt, CalendarDays, Activity, Sun, Leaf, Car, Sparkles } from "lucide-react";
+import { Cloud, Droplets, Eye, Thermometer, Wind, Sunrise, AlertTriangle, Compass, Quote, Shirt, CalendarDays, Activity, Sun, Leaf, Car, Radar } from "lucide-react";
 import { format } from "date-fns";
 import { useSettings } from "./settings-provider";
 import { motion } from "framer-motion";
@@ -295,7 +295,7 @@ export function WeatherDashboard({ data, dayPhase }: WeatherDashboardProps) {
                 return null;
             return (<Card index={3} premium className="p-8">
               <div className="flex items-center gap-3 mb-6">
-                <Sparkles className="w-6 h-6 text-primary shrink-0"/>
+                <Radar className="w-6 h-6 text-primary shrink-0"/>
                 <div>
                   <h3 className="text-lg font-serif font-semibold tracking-tight">Ambient intelligence</h3>
                   <p className="text-xs text-foreground/50 uppercase tracking-widest mt-0.5">Context-aware guidance</p>
