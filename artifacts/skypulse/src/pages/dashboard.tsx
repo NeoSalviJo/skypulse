@@ -260,7 +260,7 @@ export default function Dashboard() {
                   SkyPulse
                 </h1>
                 <p className="skypulse-atmosphere-subtitle text-lg sm:text-xl md:text-2xl text-foreground font-light max-w-2xl mx-auto leading-snug px-2">
-                  Experience the atmosphere. Precise, luxurious, everywhere.
+                  Clear forecasts, calm design, wherever you open the app.
                 </p>
               </div>
 

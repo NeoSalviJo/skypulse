@@ -385,8 +385,8 @@ export function WeatherDashboard({ data, dayPhase }: WeatherDashboardProps) {
               <div className="flex items-center gap-3 mb-6">
                 <Radar className="w-6 h-6 text-primary shrink-0"/>
                 <div>
-                  <h3 className="text-lg font-serif font-semibold tracking-tight">Ambient intelligence</h3>
-                  <p className="text-xs text-foreground/50 uppercase tracking-widest mt-0.5">Context-aware guidance</p>
+                  <h3 className="text-lg font-serif font-semibold tracking-tight">Outlook</h3>
+                  <p className="text-xs text-foreground/50 uppercase tracking-widest mt-0.5">Based on conditions</p>
                 </div>
               </div>
               <SmartInsightsList items={insights}/>
@@ -542,7 +542,7 @@ export function WeatherDashboard({ data, dayPhase }: WeatherDashboardProps) {
         
         <Card index={7} float className="p-6">
           <h3 className="text-base font-serif font-semibold text-foreground/70 mb-5 flex items-center gap-2">
-            <Sunrise className="w-4 h-4 text-primary"/> Sun & Moon
+            <Sunrise className="w-4 h-4 text-primary"/> Sunrise, sunset & moon
           </h3>
 
           
@@ -583,7 +583,7 @@ export function WeatherDashboard({ data, dayPhase }: WeatherDashboardProps) {
             <div>
               <p className="font-semibold text-sm">{moon.name}</p>
               <p className="text-xs text-foreground/40 mt-0.5">
-                {Math.round(moon.percent * 100)}% through lunar cycle
+                About {Math.round(moon.percent * 100)}% illuminated
               </p>
             </div>
           </div>
@@ -592,7 +592,7 @@ export function WeatherDashboard({ data, dayPhase }: WeatherDashboardProps) {
         
         <Card index={8} className="p-6 flex-1 flex flex-col">
           <h3 className="text-base font-serif font-semibold text-foreground/70 mb-5 flex items-center gap-2">
-            <CalendarDays className="w-4 h-4 text-primary"/> 7-Day Forecast
+            <CalendarDays className="w-4 h-4 text-primary"/> Weekly forecast
           </h3>
           <div className="flex flex-col gap-4 flex-1 justify-between">
             {forecast.map((day: DailyForecast, i: number) => {

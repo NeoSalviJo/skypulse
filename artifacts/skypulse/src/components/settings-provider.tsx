@@ -35,7 +35,7 @@ export const AMBIENT_PRESET_LABELS: Record<AmbientSoundPreset, { title: string; 
     },
     cloudy: {
         title: "Cloudy",
-        description: "Dense, calm atmospheric motion.",
+        description: "Soft overcast ambience.",
     },
     calm: {
         title: "Calm sky",
@@ -58,7 +58,7 @@ export const AMBIENT_SOUND_LABELS: Record<AmbientSoundCharacter, { title: string
     },
     immersive: {
         title: "Immersive",
-        description: "Stronger layers — cinematic, heavier presence.",
+        description: "Richer ambient detail and depth.",
     },
 };
 
