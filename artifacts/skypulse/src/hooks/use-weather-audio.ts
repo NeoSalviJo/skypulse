@@ -46,9 +46,11 @@ function makeNoiseSource(ctx: AudioContext, buf: AudioBuffer): AudioBufferSource
 type Stoppable = AudioBufferSourceNode | OscillatorNode;
 
 function playThunderBurst(ctx: AudioContext, master: GainNode, character: AmbientSoundCharacter): void {
+    if (ctx.state !== "running")
+        return;
     const chr = CHARACTER_MIX[character] ?? 1;
-    const peak = Math.min(0.92, (0.38 + Math.random() * 0.22) * chr);
-    const len = Math.floor(ctx.sampleRate * (0.5 + Math.random() * 0.15));
+    const peak = Math.min(0.95, (0.52 + Math.random() * 0.28) * chr);
+    const len = Math.floor(ctx.sampleRate * (0.55 + Math.random() * 0.2));
     const buf = ctx.createBuffer(1, len, ctx.sampleRate);
     const d = buf.getChannelData(0);
     let b = 0;
@@ -61,10 +63,10 @@ function playThunderBurst(ctx: AudioContext, master: GainNode, character: Ambien
     src.buffer = buf;
     const hp = ctx.createBiquadFilter();
     hp.type = "highpass";
-    hp.frequency.value = 35 + Math.random() * 35;
+    hp.frequency.value = 22 + Math.random() * 28;
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
-    lp.frequency.value = 320 + Math.random() * 180;
+    lp.frequency.value = 480 + Math.random() * 240;
     const g = ctx.createGain();
     const t = ctx.currentTime;
     src.connect(hp);
@@ -83,16 +85,52 @@ function playThunderBurst(ctx: AudioContext, master: GainNode, character: Ambien
 function scheduleStormThunder(ctx: AudioContext, master: GainNode, character: AmbientSoundCharacter): () => void {
     let disposed = false;
     let pending: number | undefined;
-    const kick = (): void => {
-        if (disposed || (ctx.state !== "running" && ctx.state !== "suspended"))
+
+    const scheduleAfter = (ms: number, fn: () => void): void => {
+        if (disposed)
             return;
-        if (ctx.state === "suspended")
-            void ctx.resume();
-        playThunderBurst(ctx, master, character);
-        const gap = 3500 + Math.random() * 8500;
-        pending = window.setTimeout(kick, gap);
+        if (pending !== undefined)
+            clearTimeout(pending);
+        pending = window.setTimeout(fn, ms);
     };
-    pending = window.setTimeout(kick, 400 + Math.random() * 1200);
+
+    function loop(): void {
+        playAndReschedule();
+    }
+
+    function playAndReschedule(): void {
+        if (disposed || ctx.state === "closed")
+            return;
+
+        const gap = 2800 + Math.random() * 7200;
+
+        function next(): void {
+            if (disposed)
+                return;
+            playThunderBurst(ctx, master, character);
+            scheduleAfter(gap, loop);
+        }
+
+        if (ctx.state === "running") {
+            next();
+        }
+        else if (ctx.state === "suspended") {
+            void ctx.resume().then(() => {
+                if (!disposed && ctx.state === "running")
+                    next();
+                else if (!disposed)
+                    scheduleAfter(120, loop);
+            }).catch(() => {
+                if (!disposed)
+                    scheduleAfter(250, loop);
+            });
+        }
+        else {
+            scheduleAfter(200, loop);
+        }
+    }
+
+    scheduleAfter(180 + Math.random() * 420, loop);
 
     return () => {
         disposed = true;
@@ -101,7 +139,7 @@ function scheduleStormThunder(ctx: AudioContext, master: GainNode, character: Am
     };
 }
 
-function createAmbientNodes(ctx: AudioContext, code: string, windKmh = 0, character: AmbientSoundCharacter = "balanced"): {
+function createAmbientNodes(ctx: AudioContext, code: string, windKmh = 0, character: AmbientSoundCharacter = "balanced", blendLiveWind = false): {
     master: GainNode;
     stoppable: Stoppable[];
     cleanup?: () => void;
@@ -181,8 +219,8 @@ function createAmbientNodes(ctx: AudioContext, code: string, windKmh = 0, charac
         filt.type = "lowpass";
         filt.frequency.value = 220;
         const g = ctx.createGain();
-        g.gain.value = scale(0.16);
-        addLFO(g.gain, 0.065, 0.09 * chr);
+        g.gain.value = scale(0.22);
+        addLFO(g.gain, 0.065, 0.11 * chr);
         osc.connect(filt);
         filt.connect(g);
         g.connect(master);
@@ -196,8 +234,8 @@ function createAmbientNodes(ctx: AudioContext, code: string, windKmh = 0, charac
         fR.type = "lowpass";
         fR.frequency.value = 95;
         const gR = ctx.createGain();
-        gR.gain.value = scale(0.088);
-        addLFO(gR.gain, 0.05, 0.055 * chr);
+        gR.gain.value = scale(0.12);
+        addLFO(gR.gain, 0.05, 0.07 * chr);
         oscR.connect(fR);
         fR.connect(gR);
         gR.connect(master);
@@ -209,7 +247,7 @@ function createAmbientNodes(ctx: AudioContext, code: string, windKmh = 0, charac
     if (code === "snow" || code === "cloudy" || code === "fog") {
         addWind(0.22, 350);
     }
-    if (windKmh > 32) {
+    if (blendLiveWind && windKmh > 32) {
         addWind(0.06 + Math.min(0.14, (windKmh - 32) / 90), 520);
     }
     if (code === "night") {
@@ -235,6 +273,7 @@ export function useWeatherAudio(
     const preset = options.preset ?? "auto";
     const ambientCode = resolveAmbientSoundCode(preset, conditionCode);
     const synthWind = synthesisWindKmh(preset, windSpeedKmh);
+    const blendLiveWind = preset === "auto";
     const [isEnabled, setIsEnabled] = useState(false);
     const ctxRef = useRef<AudioContext | null>(null);
     const stoppableRef = useRef<Stoppable[]>([]);
@@ -245,7 +284,7 @@ export function useWeatherAudio(
         ambientCleanupRef.current = null;
         const ctx = ctxRef.current;
         const master = masterRef.current;
-        if (!ctx || stoppableRef.current.length === 0)
+        if (!ctx || (stoppableRef.current.length === 0 && !masterRef.current))
             return;
         const doStop = () => {
             stoppableRef.current.forEach(n => {
@@ -255,6 +294,10 @@ export function useWeatherAudio(
                 catch { }
             });
             stoppableRef.current = [];
+            try {
+                masterRef.current?.disconnect();
+            }
+            catch { /* */ }
             masterRef.current = null;
         };
         if (fade && master) {
@@ -265,7 +308,7 @@ export function useWeatherAudio(
             doStop();
         }
     }, []);
-    const startSound = useCallback((code: string, wind: number, vol: number, char: AmbientSoundCharacter) => {
+    const startSound = useCallback((code: string, wind: number, vol: number, char: AmbientSoundCharacter, blendWind: boolean) => {
         const ctx = ctxRef.current;
         if (!ctx)
             return;
@@ -273,13 +316,27 @@ export function useWeatherAudio(
             void ctx.resume();
         ambientCleanupRef.current?.();
         ambientCleanupRef.current = null;
-        const { master, stoppable, cleanup } = createAmbientNodes(ctx, code, wind, char);
+        if (masterRef.current || stoppableRef.current.length > 0) {
+            stoppableRef.current.forEach(n => {
+                try {
+                    n.stop();
+                }
+                catch { }
+            });
+            stoppableRef.current = [];
+            try {
+                masterRef.current?.disconnect();
+            }
+            catch { /* */ }
+            masterRef.current = null;
+        }
+        const { master, stoppable, cleanup } = createAmbientNodes(ctx, code, wind, char, blendWind);
         masterRef.current = master;
         stoppableRef.current = stoppable;
         ambientCleanupRef.current = cleanup ?? null;
         const target = Math.min(1, Math.max(0, vol));
         master.gain.setValueAtTime(0, ctx.currentTime);
-        master.gain.linearRampToValueAtTime(target, ctx.currentTime + 1.5);
+        master.gain.linearRampToValueAtTime(target, ctx.currentTime + 1.2);
     }, []);
     const toggle = useCallback(() => {
         if (isEnabled) {
@@ -290,10 +347,12 @@ export function useWeatherAudio(
             if (!ctxRef.current) {
                 ctxRef.current = new AudioContext();
             }
-            startSound(ambientCode, synthWind, volume, character);
+            const ac = ctxRef.current;
+            void ac.resume().finally(() =>
+                startSound(ambientCode, synthWind, volume, character, blendLiveWind));
             setIsEnabled(true);
         }
-    }, [isEnabled, ambientCode, synthWind, volume, character, stopAll, startSound]);
+    }, [isEnabled, ambientCode, synthWind, volume, character, blendLiveWind, stopAll, startSound]);
     useEffect(() => {
         if (!isEnabled)
             return;
@@ -314,9 +373,9 @@ export function useWeatherAudio(
         if (!isEnabled)
             return;
         stopAll(false);
-        const tid = window.setTimeout(() => startSound(ambientCode, synthWind, volume, character), 150);
+        const tid = window.setTimeout(() => startSound(ambientCode, synthWind, volume, character, blendLiveWind), 150);
         return () => window.clearTimeout(tid);
-    }, [ambientCode, synthWind, volume, character, isEnabled, startSound, stopAll]);
+    }, [ambientCode, synthWind, volume, character, blendLiveWind, isEnabled, startSound, stopAll]);
     useEffect(() => {
         return () => {
             stopAll(false);

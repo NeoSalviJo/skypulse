@@ -149,7 +149,7 @@ export default function Dashboard() {
         character: ambientCharacter,
         preset: ambientPreset,
     });
-    return (<main className="relative min-h-[100dvh] w-full overflow-x-hidden flex flex-col items-center">
+    return (<main className="relative isolate min-h-[100dvh] w-full overflow-x-hidden flex flex-col items-center supports-[backdrop-filter]:bg-transparent">
       <AnimatedBackground conditionCode={conditionCode} timeOfDay={skyTime} dayPhase={dayPhase} windSpeedKmh={data?.current.windSpeed ?? 0}/>
 
       
@@ -256,10 +256,10 @@ export default function Dashboard() {
                 <motion.div animate={{ y: [0, -6, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} className="inline-flex items-center justify-center p-4 rounded-3xl glass-card mb-4 sm:mb-8">
                   <CloudLightning className="size-14 sm:size-16 text-primary drop-shadow-lg shrink-0"/>
                 </motion.div>
-                <h1 className="text-[clamp(2.125rem,8.5vw,4.25rem)] sm:text-6xl md:text-8xl lg:text-9xl font-serif font-bold tracking-tighter text-foreground drop-shadow-2xl break-words px-1">
+                <h1 className="skypulse-atmosphere-title text-[clamp(2.125rem,8.5vw,4.25rem)] sm:text-6xl md:text-8xl lg:text-9xl font-serif font-bold tracking-tighter text-foreground break-words px-1">
                   SkyPulse
                 </h1>
-                <p className="text-lg sm:text-xl md:text-2xl text-foreground/70 font-light max-w-2xl mx-auto leading-snug px-2">
+                <p className="skypulse-atmosphere-subtitle text-lg sm:text-xl md:text-2xl text-foreground font-light max-w-2xl mx-auto leading-snug px-2">
                   Experience the atmosphere. Precise, luxurious, everywhere.
                 </p>
               </div>

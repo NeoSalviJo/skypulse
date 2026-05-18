@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
+import { useComfortGraphics } from "@/hooks/use-media-query";
 import { useTheme } from "./theme-provider";
 import { DAY_PHASE_TINT, type DayPhase } from "@/lib/day-phase";
 import {
@@ -8,9 +9,8 @@ import {
     effectiveDayPhase,
     weatherAccentFromCondition,
     type SkyTimeFallback,
-    type CelestialSun,
-    type CelestialMoon,
 } from "@/lib/atmosphere-phase";
+import { LivingSkyAtlas } from "@/components/living-sky-atlas";
 
 export type TimeOfDay = SkyTimeFallback;
 
@@ -43,9 +43,20 @@ const SNOW_LARGE = svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="10" he
 const SNOW_MEDIUM = svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="7" height="7"><circle cx="3.5" cy="3.5" r="2.5" fill="rgba(255,255,255,0.58)"/></svg>`);
 const SNOW_SMALL = svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><circle cx="2" cy="2" r="1.5" fill="rgba(255,255,255,0.42)"/></svg>`);
 
+function narrowParticleDensity(accent: WeatherAccent): number {
+    if (!accent) return 0.62;
+    if (accent === "fog") return 0.5;
+    if (accent === "cloudy") return 0.66;
+    if (accent === "snow") return 0.55;
+    return 0.72;
+}
+
 export function AnimatedBackground({ conditionCode, timeOfDay, dayPhase = null, windSpeedKmh = 0 }: AnimatedBackgroundProps) {
     const { theme } = useTheme();
     const reduceMotion = useReducedMotion();
+    const comfortGraphics = useComfortGraphics();
+    /** Framer detects OS setting; hooks also OR in narrow/mobile budget. */
+    const calm = !!(reduceMotion || comfortGraphics);
     const phase = effectiveDayPhase(dayPhase, timeOfDay);
     const cfg = CINEMATIC_PHASE[phase];
     const accent = weatherAccentFromCondition(conditionCode);
@@ -55,72 +66,62 @@ export function AnimatedBackground({ conditionCode, timeOfDay, dayPhase = null, 
         (phase === "deep-night" || phase === "night" || phase === "blue-hour" || phase === "dusk");
 
     const wind01 = Math.min(1.2, windSpeedKmh / 55);
-    const cloudBoost = accent === "cloudy" ? 1.35 : accent === "storm" ? 1.65 : accent === "fog" ? 0.85 : 1;
+    const atlasStarMul = nightLuxury && !isLightTheme ? 0.5 : isLightTheme ? 0.32 : 0.58;
 
     return (
-        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-background">
+        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-[#050816] [--atlas-hint:transparent]">
 
-            <motion.div
-                key={`sky-${phase}`}
-                aria-hidden
-                className="absolute inset-0"
-                initial={{ opacity: reduceMotion ? 1 : 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: reduceMotion ? 0 : 2.8, ease: "easeInOut" }}
-                style={{ background: cfg.background }}
-            />
+            {/* Under-paint procedural wash — flashes coherent color during asset load only. */}
+            <div aria-hidden className="absolute inset-0 z-0 opacity-[0.42]" style={{ background: cfg.background }}/>
 
-            {nightLuxury && <NebulaParallaxBackdrop reduceMotion={!!reduceMotion} />}
-
-            <HorizonBloom glow={cfg.horizonGlow} topWash={cfg.topWash} isLight={isLightTheme} nightLuxury={nightLuxury} />
-
-            <AtmosphericHaze strength={cfg.atmosphericHaze * (accent === "fog" ? 1.45 : 1)} isLight={isLightTheme} nightLuxury={nightLuxury} />
-
-            {cfg.sun && (
-                <CinematicSun
-                    spec={cfg.sun}
-                    rayIntensity={cfg.sun.rayIntensity}
-                    reduceMotion={!!reduceMotion}
-                    dampen={accent === "fog" || accent === "storm" || accent === "rain"}
+            <div className="absolute inset-0 z-[1]">
+                <LivingSkyAtlas
+                    phase={phase}
+                    accent={accent}
+                    calm={calm}
+                    narrow={comfortGraphics}
+                    wind01={wind01}
+                    lightShafts={cfg.lightShafts}
+                    moonSpec={cfg.moon !== false ? cfg.moon : false}
                 />
+            </div>
+
+            {nightLuxury && !calm && (
+                <div className="pointer-events-none absolute inset-0 z-[2]" aria-hidden>
+                    <NebulaParallaxBackdrop reduceMotion={false}/>
+                </div>
             )}
 
-            {cfg.moon && (
-                <CinematicMoon spec={cfg.moon} reduceMotion={!!reduceMotion} luxury={nightLuxury} />
-            )}
+            <HorizonBloom glow={cfg.horizonGlow} topWash={cfg.topWash} isLight={isLightTheme} nightLuxury={nightLuxury}/>
 
-            <Starfield strength={cfg.stars} reduceMotion={!!reduceMotion} parallaxNight={nightLuxury} accent={accent} />
+            <AtmosphericHaze strength={cfg.atmosphericHaze * (accent === "fog" ? 1.12 : accent === null ? 0.82 : 0.9)} isLight={isLightTheme} nightLuxury={nightLuxury}/>
 
-            {cfg.lightShafts && (
-                <LightShafts phaseKey={phase} intensity={cfg.sun && typeof cfg.sun === "object" ? cfg.sun.rayIntensity : 0.5} reduceMotion={!!reduceMotion} />
-            )}
+            {cfg.aurora && <AuroraLayers reduceMotion={calm} boosted={nightLuxury}/>}
 
-            {cfg.aurora && <AuroraLayers reduceMotion={!!reduceMotion} boosted={nightLuxury} />}
+            <Starfield strength={cfg.stars * atlasStarMul} reduceMotion={calm} parallaxNight={nightLuxury && !calm} accent={accent}/>
 
-            <VolumetricClouds
-                wind={wind01}
-                boost={cloudBoost}
-                isLight={isLightTheme}
-                accent={accent}
-                reduceMotion={!!reduceMotion}
-                nightLuxury={nightLuxury}
-            />
+            <AtmosphereTint phase={phase} muted={false} light={isLightTheme}/>
 
-            <WeatherStack accent={accent} isLight={isLightTheme} reduceMotion={!!reduceMotion} />
+            <AmbientParticles density={accent === "storm" ? 0.42 : narrowParticleDensity(accent)} reduceMotion={calm} narrow={comfortGraphics}/>
 
-            <AtmosphereTint phase={phase} muted={false} light={isLightTheme} />
-
-            <AmbientParticles density={accent === "storm" ? 0.45 : 0.85} reduceMotion={!!reduceMotion} />
+            <div className="absolute inset-0 z-[38] pointer-events-none">
+              <WeatherStack accent={accent} isLight={isLightTheme} reduceMotion={calm} narrow={comfortGraphics}/>
+            </div>
 
             {windSpeedKmh > 22 && (
-                <WindShear intensity={Math.min(1, (windSpeedKmh - 22) / 48)} reduceMotion={!!reduceMotion} />
+                <WindShear intensity={Math.min(1, (windSpeedKmh - 22) / 48)} reduceMotion={calm} narrow={comfortGraphics}/>
             )}
 
-            {(accent === "rain" || accent === "storm") && <WetGlassSheen />}
-            {nightLuxury && <CinematicGradientLighting reduceMotion={!!reduceMotion} />}
+            <div className="pointer-events-none absolute inset-0 z-[42]">
+                {(accent === "rain" || accent === "storm") && <WetGlassSheen />}
+            </div>
+            {nightLuxury && !calm && (
+                <div className="pointer-events-none absolute inset-0 z-[44]">
+                    <CinematicGradientLighting reduceMotion={false}/>
+                </div>
+            )}
 
-            <FilmGrain isLight={isLightTheme} />
+            <FilmGrain isLight={isLightTheme}/>
         </div>
     );
 }
@@ -135,17 +136,17 @@ function HorizonBloom({ glow, topWash, isLight, nightLuxury }: {
         <>
             <motion.div
                 aria-hidden
-                className="absolute inset-0 z-[2]"
+                className="absolute inset-0 z-[4]"
                 style={{
                     background: glow,
-                    opacity: isLight ? 0.92 : 1,
+                    opacity: isLight ? 0.55 : nightLuxury ? 0.48 : 0.62,
                     mixBlendMode: isLight ? "multiply" : "screen",
                 }}
-                animate={isLight ? { opacity: [0.88, 0.95, 0.88] } : { opacity: nightLuxury ? [0.88, 0.98, 0.88] : [0.96, 1, 0.96] }}
-                transition={{ duration: nightLuxury ? 14 : 10, repeat: Infinity, ease: "easeInOut" }}
+                animate={isLight ? { opacity: [0.5, 0.62, 0.52] } : { opacity: nightLuxury ? [0.44, 0.58, 0.46] : [0.56, 0.68, 0.56] }}
+                transition={{ duration: nightLuxury ? 18 : 14, repeat: Infinity, ease: "easeInOut" }}
             />
             <div
-                className="absolute inset-0 z-[2]"
+                className="absolute inset-0 z-[5] opacity-[0.55]"
                 style={{
                     background: topWash,
                     mixBlendMode: isLight ? "multiply" : nightLuxury ? "soft-light" : "soft-light",
@@ -165,7 +166,7 @@ function AtmosphericHaze({ strength, isLight, nightLuxury }: {
     const n = nightLuxury && !isLight;
     return (
         <div
-            className="absolute inset-0 z-[3]"
+            className="absolute inset-0 z-[8]"
             style={{
                 background: isLight
                     ? `linear-gradient(180deg, rgba(255,255,255,${strength * 0.18}) 0%, transparent 55%, rgba(255,255,255,${strength * 0.12}) 100%)`
@@ -182,166 +183,6 @@ function AtmosphericHaze({ strength, isLight, nightLuxury }: {
     );
 }
 
-function CinematicSun({
-    spec,
-    rayIntensity,
-    reduceMotion,
-    dampen,
-}: {
-    spec: CelestialSun;
-    rayIntensity: number;
-    reduceMotion: boolean;
-    dampen: boolean;
-}) {
-    const op = dampen ? 0.55 : 1;
-    return (
-        <div className="absolute inset-0 z-[1] overflow-hidden pointer-events-none">
-            <motion.div
-                animate={reduceMotion ? {} : { y: [0, -10, 0], scale: [1, 1.02, 1] }}
-                transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
-                style={{
-                    position: "absolute",
-                    bottom: `${spec.bottomPct}%`,
-                    left: `${spec.leftPct}%`,
-                    transform: "translate(-50%, 50%)",
-                    width: spec.sizePx,
-                    height: spec.sizePx,
-                    borderRadius: "50%",
-                    background: `radial-gradient(circle, ${spec.core} 0%, ${spec.halo} 52%, transparent 76%)`,
-                    filter: dampen ? "blur(4px)" : "blur(2px)",
-                    opacity: op * 0.95,
-                    boxShadow: dampen ? "0 0 40px 12px rgba(253,224,71,0.12)" : "0 0 80px 32px rgba(253,224,71,0.22)",
-                }}
-            />
-            <motion.div
-                animate={reduceMotion ? {} : { rotate: [0, 18, -8, 0], opacity: [0.2, rayIntensity * 0.52, 0.24] }}
-                transition={{ duration: reduceMotion ? 0 : 32, repeat: Infinity, ease: "easeInOut" }}
-                style={{
-                    position: "absolute",
-                    bottom: `${spec.bottomPct}%`,
-                    left: `${spec.leftPct}%`,
-                    transform: `translate(-50%, 52%) rotate(-8deg)`,
-                    width: spec.sizePx * 3.8,
-                    height: spec.sizePx * 3.8,
-                    marginLeft: -spec.sizePx * 1.2,
-                    marginBottom: -spec.sizePx * 1.8,
-                    background: `conic-gradient(from 0deg, transparent 0deg,
-            rgba(255,252,220,${0.04 * rayIntensity * op}) 4deg,
-            transparent 14deg,
-            transparent 44deg,
-            rgba(253,246,178,${0.05 * rayIntensity * op}) 50deg,
-            transparent 62deg,
-            transparent 112deg,
-            rgba(251,237,154,${0.04 * rayIntensity * op}) 120deg,
-            transparent 138deg)`,
-                    filter: "blur(38px)",
-                    opacity: dampen ? 0.42 : 0.78,
-                }}
-            />
-        </div>
-    );
-}
-
-function CinematicMoon({
-    spec,
-    reduceMotion,
-    luxury,
-}: {
-    spec: CelestialMoon;
-    reduceMotion: boolean;
-    luxury: boolean;
-}) {
-    return (
-        <div className="absolute inset-0 z-[2] overflow-hidden pointer-events-none">
-            {luxury && (
-                <>
-                    <motion.div
-                        aria-hidden
-                        animate={reduceMotion ? {} : { scale: [1, 1.06, 1], opacity: [0.35, 0.5, 0.35] }}
-                        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
-                        style={{
-                            position: "absolute",
-                            top: `calc(${spec.topPct}% - 4%)`,
-                            right: `calc(${spec.rightPct}% - 4%)`,
-                            width: spec.haloPx * 2.1,
-                            height: spec.haloPx * 2.1,
-                            borderRadius: "50%",
-                            background: "radial-gradient(circle, rgba(200,210,255,0.08) 0%, rgba(147,112,246,0.05) 42%, transparent 68%)",
-                            filter: "blur(22px)",
-                            mixBlendMode: "screen",
-                        }}
-                    />
-                    <motion.div
-                        aria-hidden
-                        animate={reduceMotion ? {} : { rotate: [0, 8, -4, 0], opacity: [0.2, 0.32, 0.22] }}
-                        transition={{ duration: 36, repeat: Infinity, ease: "easeInOut" }}
-                        style={{
-                            position: "absolute",
-                            top: `${spec.topPct}%`,
-                            right: `${spec.rightPct}%`,
-                            width: spec.haloPx * 1.55,
-                            height: spec.haloPx * 1.55,
-                            marginTop: spec.haloPx * 0.02,
-                            marginRight: spec.haloPx * 0.02,
-                            borderRadius: "50%",
-                            background: `conic-gradient(from 210deg,
-                transparent 0deg,
-                rgba(186,210,255,0.06) 40deg,
-                transparent 80deg,
-                rgba(167,139,250,0.07) 120deg,
-                transparent 170deg,
-                rgba(147,220,255,0.055) 220deg,
-                transparent 300deg)`,
-                            filter: "blur(16px)",
-                            mixBlendMode: "screen",
-                        }}
-                    />
-                </>
-            )}
-            <motion.div
-                animate={reduceMotion ? {} : { y: [0, -6, 0] }}
-                transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
-                style={{
-                    position: "absolute",
-                    top: `${spec.topPct}%`,
-                    right: `${spec.rightPct}%`,
-                    width: spec.haloPx * (luxury ? 1.35 : 1),
-                    height: spec.haloPx * (luxury ? 1.35 : 1),
-                    marginTop: -(spec.haloPx * (luxury ? 1.35 : 1)) * 0.08,
-                    marginRight: -(spec.haloPx * (luxury ? 1.35 : 1)) * 0.08,
-                    borderRadius: "50%",
-                    background: luxury
-                        ? "radial-gradient(circle at 38% 36%, rgba(252,253,255,0.92) 0%, rgba(200,218,246,0.45) 32%, rgba(120,148,206,0.16) 55%, transparent 72%)"
-                        : "radial-gradient(circle at 38% 38%, rgba(240,248,255,0.95) 0%, rgba(180,200,230,0.35) 45%, transparent 72%)",
-                    filter: luxury ? "blur(12px)" : "blur(6px)",
-                    boxShadow: luxury
-                        ? "0 0 80px 28px rgba(160,190,255,0.25), 0 0 120px 48px rgba(120,100,200,0.12)"
-                        : undefined,
-                }}
-            />
-            <motion.div
-                animate={reduceMotion ? {} : { boxShadow: [
-                    "inset -8px -4px 18px rgba(20,30,60,0.45), 0 0 32px rgba(180,200,255,0.28)",
-                    "inset -8px -4px 18px rgba(20,30,60,0.45), 0 0 48px rgba(200,220,255,0.38)",
-                    "inset -8px -4px 18px rgba(20,30,60,0.45), 0 0 32px rgba(180,200,255,0.28)",
-                ] }}
-                transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                style={{
-                    position: "absolute",
-                    top: `calc(${spec.topPct}% + 6px)`,
-                    right: `calc(${spec.rightPct}% - 10px)`,
-                    width: spec.discPx,
-                    height: spec.discPx,
-                    borderRadius: "50%",
-                    background: luxury
-                        ? "radial-gradient(circle at 34% 32%, #fbfdff 0%, #d4e2f8 38%, #8fa4ce 68%, #2a3358 100%)"
-                        : "radial-gradient(circle at 36% 34%, #f1f6ff 0%, #b8c8e8 55%, #2a3358 100%)",
-                    boxShadow: "inset -8px -4px 18px rgba(20,30,60,0.45), 0 0 24px rgba(180,200,255,0.2)",
-                }}
-            />
-        </div>
-    );
-}
 
 function Starfield({ strength, reduceMotion, parallaxNight, accent }: {
     strength: number;
@@ -372,7 +213,7 @@ function Starfield({ strength, reduceMotion, parallaxNight, accent }: {
                 </div>
                 );
     return (
-        <div className="absolute inset-0 z-[1] pointer-events-none">
+        <div className="absolute inset-0 z-[22] pointer-events-none mix-blend-screen">
             {wrap(2, (
                 <div
                     style={{
@@ -429,47 +270,13 @@ function Starfield({ strength, reduceMotion, parallaxNight, accent }: {
     );
 }
 
-function LightShafts({
-    phaseKey,
-    intensity,
-    reduceMotion,
-}: {
-    phaseKey: DayPhase;
-    intensity: number;
-    reduceMotion: boolean;
-}) {
-    return (
-        <div className="absolute inset-0 z-[1] overflow-hidden pointer-events-none opacity-90">
-            <motion.div
-                animate={reduceMotion ? {} : { rotate: [0, 6, -4, 0], scale: [1, 1.05, 1] }}
-                transition={{ duration: reduceMotion ? 0 : 48, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -left-1/4 -top-1/4 w-[150%] h-[150%]"
-                style={{
-                    background: `conic-gradient(from 210deg,
-            transparent 0deg,
-            rgba(255,250,220,${0.03 * intensity}) 8deg,
-            transparent 22deg,
-            transparent 48deg,
-            rgba(255,245,200,${0.042 * intensity}) 58deg,
-            transparent 72deg,
-            transparent 120deg,
-            rgba(220,240,255,${0.025 * intensity}) 132deg,
-            transparent 150deg)`,
-                    filter: "blur(68px)",
-                    mixBlendMode: phaseKey === "afternoon" || phaseKey === "morning" ? "soft-light" : "screen",
-                }}
-            />
-        </div>
-    );
-}
-
 function AuroraLayers({ reduceMotion, boosted }: {
     reduceMotion: boolean;
     boosted?: boolean;
 }) {
     const b = boosted ? 1.4 : 1;
     return (
-        <div className="absolute inset-0 z-[2] overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 z-[14] overflow-hidden pointer-events-none">
             <motion.div
                 animate={reduceMotion ? {} : { x: ["-8%", "6%", "-5%"], opacity: [0.22 * b, 0.38 * b, 0.26 * b] }}
                 transition={{ duration: reduceMotion ? 0 : 38, repeat: Infinity, ease: "easeInOut" }}
@@ -504,79 +311,11 @@ function AuroraLayers({ reduceMotion, boosted }: {
     );
 }
 
-function VolumetricClouds({
-    wind,
-    boost,
-    isLight,
-    accent,
-    reduceMotion,
-    nightLuxury,
-}: {
-    wind: number;
-    boost: number;
-    isLight: boolean;
-    accent: WeatherAccent;
-    reduceMotion: boolean;
-    nightLuxury: boolean;
-}) {
-    const countBase = accent === "storm" ? 7 : accent === "cloudy" || accent === "rain" ? 6 : accent === "fog" ? 8 : 4;
-    const count = Math.min(11, Math.round(countBase * boost));
-    const speedMult = reduceMotion ? 0 : (1 + wind * 0.85) / Math.max(0.6, boost);
-
-    const layers = [...Array(count)].map((_, i) => ({
-        id: i,
-        w: 420 + i * 90 + wind * 80,
-        h: 140 + i * 28 + wind * 30,
-        top: `${8 + (i * 13) % 62}%`,
-        left: `${-22 + (i * 31) % 88}%`,
-        dur: (72 + i * 18) / speedMult,
-        delay: -i * 4.5,
-        dir: i % 2 === 0 ? 120 : -120,
-        op: accent === "fog" ? (0.18 + wind * 0.04) * boost : (0.13 + wind * 0.05) * boost,
-        blur: accent === "fog" ? 56 + wind * 8 : 45 + wind * 6,
-        night: !!(nightLuxury && !isLight),
-    }));
-
-    return (
-        <div className="absolute inset-0 z-[3] overflow-hidden pointer-events-none">
-            {layers.map((c) => (
-                <motion.div
-                    key={c.id}
-                    animate={{ x: [0, c.dir, -c.dir * 0.4, 0] }}
-                    transition={{
-                        duration: reduceMotion ? 0 : c.dur,
-                        delay: reduceMotion ? 0 : c.delay,
-                        repeat: Infinity,
-                        ease: "linear",
-                    }}
-                    style={{
-                        position: "absolute",
-                        width: c.w,
-                        height: c.h,
-                        borderRadius: "55%",
-                        top: c.top,
-                        left: c.left,
-                        background: c.night
-                            ? `radial-gradient(ellipse 120% 100% at 30% 28%,
-                      rgba(218,228,252,${Math.min(0.52, c.op * 0.55)}) 0%,
-                      rgba(92,102,138,${Math.min(0.38, c.op * 0.95)}) 38%,
-                      rgba(42,48,72,${Math.min(0.32, c.op * 0.75)}) 100%)`
-                            : isLight
-                                ? `rgba(248,252,255,${c.op + 0.08})`
-                                : `rgba(110,138,174,${c.op})`,
-                        filter: `blur(${c.blur}px)`,
-                        mixBlendMode: c.night ? "screen" : isLight ? "soft-light" : "screen",
-                    }}
-                />
-            ))}
-        </div>
-    );
-}
-
-function WeatherStack({ accent, isLight, reduceMotion }: {
+function WeatherStack({ accent, isLight, reduceMotion, narrow }: {
     accent: WeatherAccent;
     isLight: boolean;
     reduceMotion: boolean;
+    narrow: boolean;
 }) {
     if (!accent)
         return null;
@@ -649,10 +388,10 @@ function WeatherStack({ accent, isLight, reduceMotion }: {
 
             {accent === "fog" && (
                 <>
-                    {[0, 1, 2, 3, 4].map((i) => (
+                    {(narrow ? [0, 1, 2] : [0, 1, 2, 3, 4]).map((i) => (
                         <motion.div
                             key={`fog-${i}`}
-                            animate={reduceMotion ? {} : { x: [0, i % 2 ? -72 : 80, 0] }}
+                            animate={reduceMotion ? {} : { x: [0, i % 2 ? (narrow ? -36 : -72) : (narrow ? 38 : 80), 0] }}
                             transition={{ duration: reduceMotion ? 0 : 32 + i * 8, repeat: Infinity, ease: "easeInOut", delay: -i * 5 }}
                             className="absolute -left-[8%]"
                             style={{
@@ -712,10 +451,10 @@ function AtmosphereTint({ phase, muted, light, }: {
 }) {
     const t = DAY_PHASE_TINT[phase];
     const o = light
-        ? muted ? 0.18 : 0.38
-        : muted ? 0.32 : 0.62;
+        ? muted ? 0.14 : 0.28
+        : muted ? 0.26 : 0.44;
     return (
-        <motion.div className="absolute inset-0 z-[7] pointer-events-none" aria-hidden initial={{ opacity: 0 }} animate={{ opacity: o }} transition={{ duration: 3.5, ease: "easeInOut" }} style={{
+        <motion.div className="absolute inset-0 z-[20] pointer-events-none" aria-hidden initial={{ opacity: 0 }} animate={{ opacity: o }} transition={{ duration: 3.5, ease: "easeInOut" }} style={{
             background: `
           linear-gradient(195deg, ${t.a} 0%, transparent 44%, ${t.b} 100%),
           radial-gradient(ellipse 100% 55% at 50% -2%, ${t.glow} 0%, transparent 58%),
@@ -727,35 +466,49 @@ function AtmosphereTint({ phase, muted, light, }: {
     );
 }
 
-function AmbientParticles({ density, reduceMotion }: {
+function AmbientParticles({ density, reduceMotion, narrow }: {
     density: number;
     reduceMotion: boolean;
+    narrow: boolean;
 }) {
-    const seeds = [...Array(14)].map((_, i) => ({
+    const n = narrow ? (reduceMotion ? 6 : 9) : 18;
+    const seeds = [...Array(n)].map((_, i) => ({
         id: i,
         left: ((i * 37) % 92) + 4,
         top: ((i * 61) % 88) + 4,
         delay: ((i * 0.53) % 4),
-        dur: 16 + (i % 7) * 3,
-        size: i % 3 === 0 ? 2 : 1,
+        dur: narrow ? (24 + (i % 5) * 5) : 26 + (i % 11) * 2.8,
+        w: 1.8 + (i % 4) * 0.85,
+        h: 3 + (i % 5) * 1.1,
     }));
 
     return (
-        <div className="absolute inset-0 z-[6] overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 z-[22] overflow-hidden pointer-events-none">
             {seeds.map((s) => (
                 <motion.div
                     key={s.id}
-                    className="absolute rounded-full bg-white"
+                    className="absolute rounded-[2px]"
                     style={{
                         left: `${s.left}%`,
                         top: `${s.top}%`,
-                        width: s.size,
-                        height: s.size,
-                        opacity: 0.2 * density,
-                        boxShadow: s.size > 1 ? "0 0 6px 1px rgba(255,255,255,0.35)" : undefined,
-                        willChange: "transform, opacity",
+                        width: s.w,
+                        height: s.h,
+                        opacity: 0.16 * density,
+                        boxShadow:
+                            narrow || reduceMotion ? undefined : "0 0 12px rgba(255,246,226,0.22), 0 0 28px rgba(186,212,255,0.06)",
+                        background: "linear-gradient(180deg, rgba(255,252,246,0.85), rgba(200,226,252,0.12))",
+                        willChange: narrow ? undefined : "transform, opacity",
+                        mixBlendMode: "screen",
                     }}
-                    animate={reduceMotion ? {} : { y: [0, -52, 0], x: [0, 14, -8, 0], opacity: [0.06 * density, 0.35 * density, 0.08 * density] }}
+                    animate={reduceMotion
+                        ? { opacity: 0.08 * density + 0.04 }
+                        : narrow
+                            ? {
+                                    y: [0, -22, -8, 0],
+                                    x: [0, 4, -3, 0],
+                                    opacity: [0.05 * density, 0.2 * density, 0.1 * density, 0.06 * density],
+                                }
+                            : { y: [0, -52, 0], x: [0, 14, -8, 0], opacity: [0.06 * density, 0.35 * density, 0.08 * density] }}
                     transition={{ duration: s.dur, delay: s.delay, repeat: Infinity, ease: "easeInOut" }}
                 />
             ))}
@@ -763,11 +516,12 @@ function AmbientParticles({ density, reduceMotion }: {
     );
 }
 
-function WindShear({ intensity, reduceMotion }: {
+function WindShear({ intensity, reduceMotion, narrow }: {
     intensity: number;
     reduceMotion: boolean;
+    narrow?: boolean;
 }) {
-    if (reduceMotion) {
+    if (reduceMotion || narrow) {
         return (
             <div
                 className="absolute inset-0 z-[6] pointer-events-none opacity-[0.18]"
@@ -864,7 +618,7 @@ function FilmGrain({ isLight }: {
 }) {
     return (
         <div
-            className="absolute inset-0 z-[8] pointer-events-none mix-blend-overlay"
+            className="absolute inset-0 z-[54] pointer-events-none mix-blend-overlay"
             style={{
                 opacity: isLight ? 0.045 : 0.12,
                 backgroundImage:

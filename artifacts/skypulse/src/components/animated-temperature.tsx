@@ -19,7 +19,7 @@ export function AnimatedTemperature({ value, className = "", suffixClassName = "
         });
         return () => controls.stop();
     }, [value]);
-    return (<span className={`tabular-nums relative inline-block ${className}`}>
+    return (<span className={`tabular-nums relative inline-flex flex-wrap items-baseline gap-x-1.5 ${className}`}>
       <span>{display}</span>
       <span className={`font-light ${suffixClassName}`}>{suffix}</span>
     </span>);

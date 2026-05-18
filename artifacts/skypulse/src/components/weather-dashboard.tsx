@@ -1,11 +1,13 @@
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 import type { WeatherSummary, WeatherAlert, DailyForecast } from "@workspace/api-client-react";
-import { Cloud, Droplets, Eye, Thermometer, Wind, Sunrise, AlertTriangle, Compass, Quote, Shirt, CalendarDays, Activity, Sun, Leaf, Car, Radar } from "lucide-react";
+import { Droplets, Eye, Thermometer, Wind, Sunrise, AlertTriangle, Compass, Quote, Shirt, CalendarDays, Activity, Sun, Leaf, Car, Radar } from "lucide-react";
 import { format } from "date-fns";
 import { useSettings } from "./settings-provider";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
+import { useComfortGraphics } from "@/hooks/use-media-query";
 import type { DayPhase } from "@/lib/day-phase";
-import { WeatherHeroVisual } from "@/components/weather-hero-visual";
+import { CinematicHeroChrome } from "@/components/cinematic-hero-chrome";
+import { CinematicHeroScene } from "@/components/cinematic-hero-scene";
 import { AnimatedTemperature } from "@/components/animated-temperature";
 import { HourlyForecastCinematic } from "@/components/hourly-forecast-cinematic";
 import { buildSmartInsights, SmartInsightsList } from "@/components/smart-weather-insights";
@@ -162,24 +164,72 @@ const cardVariants = {
             ] },
     }),
 };
+const softCardVariants = {
+    hidden: { opacity: 0, y: 12 },
+    visible: (i: number) => ({
+        opacity: 1,
+        y: 0,
+        transition: { delay: i * 0.05, duration: 0.45, ease: [0.16, 1, 0.3, 1] as [
+                number,
+                number,
+                number,
+                number
+            ] },
+    }),
+};
 function Card({ children, className = "", index = 0, float = false, premium = false }: {
-    children: React.ReactNode;
+    children: ReactNode;
     className?: string;
     index?: number;
     float?: boolean;
     premium?: boolean;
 }) {
-    return (<motion.div custom={index} variants={cardVariants} initial="hidden" animate="visible" whileHover={float ? { y: -5, transition: { duration: 0.25, ease: "easeOut" } } : undefined} className={`${premium ? "glass-card-premium" : "glass-card"} glass-card-hover group ${className}`}>
+    const reduceMotion = useReducedMotion();
+    const comfort = useComfortGraphics();
+    const settle = !!(reduceMotion || comfort);
+    const variants = settle ? softCardVariants : cardVariants;
+    return (<motion.div custom={index} variants={variants} initial="hidden" animate="visible" whileHover={float && !settle ? { y: -4, transition: { duration: 0.22, ease: "easeOut" } } : undefined} className={`${premium ? "glass-card-premium" : "glass-card"} glass-card-hover group ${className}`}>
       {children}
     </motion.div>);
 }
+function HeroMetricLuxury({ icon, label, value, sub }: {
+    icon: ReactNode;
+    label: string;
+    value: ReactNode;
+    sub?: ReactNode;
+}) {
+    const reduceMotion = useReducedMotion();
+    const comfort = useComfortGraphics();
+    const settle = !!(reduceMotion || comfort);
+    return (
+        <motion.div
+            layout={false}
+            whileHover={settle ? undefined : { y: -3, transition: { duration: 0.28, ease: "easeOut" } }}
+            className="glass-luxury-metric flex flex-col gap-3 rounded-2xl border border-white/[0.12] p-4 shadow-[0_12px_48px_-12px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-5"
+        >
+            <div className="flex items-center gap-2 text-foreground/65">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.06] text-primary ring-1 ring-white/10">
+                    {icon}
+                </span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.2em]">{label}</span>
+            </div>
+            <p className="font-serif text-2xl font-semibold tabular-nums tracking-tight text-foreground sm:text-[1.65rem]">
+                {value}
+            </p>
+            {sub && <div className="text-xs font-medium text-foreground/50">{sub}</div>}
+        </motion.div>
+    );
+}
+
 export function WeatherDashboard({ data, dayPhase }: WeatherDashboardProps) {
     const { current, hourly, forecast, alerts, dailySummary, clothingAdvice } = data;
     const { convertTemp, tempSuffix } = useSettings();
     const moon = getMoonPhase();
-    const effectiveCondition = current.conditionCode === "cloudy" && (current.description === "fog" || current.description === "icy fog")
-        ? "fog"
-        : current.conditionCode;
+    const heroConditionCode =
+        current.conditionCode === "cloudy"
+        && (current.description === "fog" || current.description === "icy fog")
+            ? "fog"
+            : current.conditionCode;
     const getAqiColor = (aqi: number | null | undefined) => {
         if (!aqi)
             return "text-foreground/60";
@@ -231,46 +281,84 @@ export function WeatherDashboard({ data, dayPhase }: WeatherDashboardProps) {
       <div className="lg:col-span-8 flex flex-col gap-6 lg:gap-8">
 
         
-        <Card index={0} premium className="p-8 md:p-12 relative overflow-hidden flex flex-col justify-between min-h-[400px]">
-          
-          <div className="pointer-events-none absolute inset-0 rounded-[inherit] opacity-[0.18] md:opacity-25 dark:opacity-100 transition-opacity" aria-hidden style={{
-              background:
-                  "radial-gradient(circle at 58% 42%, rgba(26, 42, 74, 0.42) 0%, transparent 56%), radial-gradient(circle at 12% 20%, rgba(88, 110, 180, 0.08) 0%, transparent 45%)",
-          }}/>
+        <Card index={0} premium className="relative max-w-[100vw] min-h-[min(28rem,62dvh)] overflow-hidden rounded-[2rem] border border-white/[0.24] bg-[#070b22]/92 p-0 shadow-[0_40px_120px_-42px_rgba(0,0,0,0.75)] backdrop-blur-[2px] sm:min-h-[min(31rem,60dvh)] sm:rounded-[2.25rem] dark:border-[rgba(200,206,255,0.2)] ring-1 ring-white/[0.12]">
 
-          <motion.div animate={{ opacity: [0.3, 0.55, 0.3], scale: [1, 1.05, 1] }} transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }} className="absolute -bottom-20 -right-20 w-96 h-96 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(96,165,250,0.18) 0%, transparent 70%)" }}/>
+          <CinematicHeroScene
+              variant="hero"
+              conditionCode={heroConditionCode}
+              isDay={current.isDay}
+              windSpeedKmh={current.windSpeed}
+              dayPhase={dayPhase}
+          />
+          <CinematicHeroChrome dayPhase={dayPhase}/>
 
-          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start gap-4">
-            <div>
-              <h2 className="text-4xl md:text-6xl font-serif font-bold tracking-tight mb-1">{current.city}</h2>
-              <p className="text-foreground/60 text-lg md:text-xl font-sans font-light tracking-tight">{current.country}</p>
-            </div>
-            <div className="text-left md:text-right py-2.5 px-5 rounded-2xl shrink-0 border border-white/10 dark:border-white/[0.12] bg-black/14 dark:bg-[rgba(12,14,42,0.46)] backdrop-blur-[22px] backdrop-saturate-150 shadow-[0_8px_32px_rgba(0,0,0,0.25)]">
-              <p className="text-lg md:text-2xl font-semibold tracking-tight">{format(new Date(), "EEEE, d MMM")}</p>
-              <p className="text-foreground/55 text-sm md:text-base font-sans">{format(new Date(), "h:mm a")}</p>
-            </div>
-          </div>
+          <div className="pointer-events-none absolute inset-0 z-[4] rounded-[inherit] hero-glass-specular opacity-[0.38]" aria-hidden/>
 
-          <div className="relative z-10 mt-10 md:mt-12 grid grid-cols-1 md:grid-cols-[auto_minmax(0,1fr)] gap-y-8 gap-x-8 md:gap-x-10 md:items-end">
-            <div className="relative min-w-[9rem] md:min-w-[11rem]">
-              <AnimatedTemperature value={Math.round(convertTemp(current.temperature))} suffix={tempSuffix} className="text-8xl md:text-[140px] font-serif font-bold tracking-tighter leading-none drop-shadow-[0_4px_48px_rgba(0,0,0,0.28)]" suffixClassName="text-4xl md:text-6xl font-serif absolute top-2 -right-8 md:-right-12"/>
+          <div className="relative z-20 mx-auto flex min-h-[inherit] w-full flex-col justify-between gap-10 p-6 sm:p-8 md:p-10 lg:p-12">
+            <div className="flex flex-row flex-wrap items-start justify-between gap-x-6 gap-y-4">
+              <div className="min-w-0 max-w-[min(100%,24rem)]">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-white/55 drop-shadow-[0_2px_12px_rgba(0,0,0,0.45)]">
+                  Current conditions
+                </p>
+                <h2 className="font-serif text-[clamp(2rem,6.2vw,3.85rem)] font-semibold tracking-[-0.02em] text-balance leading-[1.02] text-white drop-shadow-[0_4px_32px_rgba(0,0,0,0.5)] md:text-[3.65rem]">
+                  {current.city}
+                </h2>
+                <p className="mt-2 truncate font-sans text-sm font-normal tracking-wide text-white/75 drop-shadow-[0_2px_12px_rgba(0,0,0,0.4)] sm:text-base sm:whitespace-normal">
+                  {current.country}
+                </p>
+              </div>
+              <div className="shrink-0 rounded-[1rem] border border-white/20 bg-black/25 px-4 py-2.5 shadow-[0_14px_48px_-12px_rgba(0,0,0,0.6)] backdrop-blur-2xl backdrop-saturate-150 ring-1 ring-white/15 sm:rounded-2xl sm:px-5 sm:py-3">
+                <p className="text-left text-[0.95rem] font-semibold tabular-nums tracking-tight text-white sm:text-right sm:text-xl">
+                  {format(new Date(), "EEEE, d MMM")}
+                </p>
+                <p className="text-left font-sans text-[0.8rem] tabular-nums leading-tight text-white/65 sm:text-right sm:text-sm">
+                  {format(new Date(), "h:mm a")}
+                </p>
+              </div>
             </div>
-            <div className="flex justify-center md:justify-end md:pb-2">
-              <WeatherHeroVisual conditionCode={effectiveCondition} iconCode={current.icon} description={current.description} isDay={current.isDay}/>
-            </div>
-            <div className="md:col-span-2 flex flex-col items-center text-center gap-2 pt-1">
-              <span className="text-2xl md:text-3xl font-serif font-medium capitalize text-foreground/95">
-                {current.description}
-              </span>
-              <div className="flex gap-6 text-foreground/55 text-base font-sans">
-                <span>H: {Math.round(convertTemp(forecast[0]?.tempMax || current.temperature))}°</span>
-                <span>L: {Math.round(convertTemp(forecast[0]?.tempMin || current.temperature))}°</span>
+
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between lg:gap-12">
+              <div className="min-w-0 flex-1">
+                <AnimatedTemperature
+                    value={Math.round(convertTemp(current.temperature))}
+                    suffix={tempSuffix}
+                    className="font-serif text-[clamp(3.5rem,14vw,7.25rem)] font-semibold tracking-[-0.05em] leading-none text-white drop-shadow-[0_8px_48px_rgba(0,0,0,0.45)] sm:text-[clamp(4rem,11vw,6.85rem)]"
+                    suffixClassName="font-serif text-[clamp(1.05rem,3.4vw,2.6rem)] font-medium text-white/80 translate-y-[0.06em] align-top"
+                />
+                <p className="mt-4 max-w-xl font-serif text-xl font-medium capitalize leading-snug tracking-tight text-white/92 drop-shadow-[0_2px_16px_rgba(0,0,0,0.35)] sm:text-2xl md:text-[1.75rem]">
+                  {current.description}
+                </p>
+              </div>
+              <div className="flex flex-shrink-0 flex-wrap items-center gap-2 lg:flex-col lg:items-stretch lg:gap-3">
+                <span className="rounded-full border border-white/22 bg-white/10 px-4 py-2 font-sans text-xs font-semibold tabular-nums tracking-wide text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-md sm:text-sm">
+                  High {Math.round(convertTemp(forecast[0]?.tempMax ?? current.temperature))}{tempSuffix}
+                </span>
+                <span className="rounded-full border border-white/22 bg-white/10 px-4 py-2 font-sans text-xs font-semibold tabular-nums tracking-wide text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-md sm:text-sm">
+                  Low {Math.round(convertTemp(forecast[0]?.tempMin ?? current.temperature))}{tempSuffix}
+                </span>
               </div>
             </div>
           </div>
         </Card>
 
-        
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+          <HeroMetricLuxury icon={<Thermometer className="h-4 w-4"/>} label="Feels like" value={<>{Math.round(convertTemp(current.feelsLike))}{tempSuffix}</>}/>
+          <HeroMetricLuxury icon={<Droplets className="h-4 w-4"/>} label="Humidity" value={<>{current.humidity}%</>} sub={<>Dew {Math.round(convertTemp(current.dewPoint))}{tempSuffix}</>}/>
+          <HeroMetricLuxury icon={<Wind className="h-4 w-4"/>} label="Wind" value={<>{current.windSpeed} km/h</>} sub={<WindDirection deg={current.windDirection}/>}/>
+          <HeroMetricLuxury
+              icon={<Sun className="h-4 w-4"/>}
+              label="UV index"
+              value={<>{current.uvIndex}</>}
+              sub={
+                <div className="w-full space-y-2">
+                  <span className="text-foreground/55">{getUvLabel(current.uvIndex)}</span>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                    <div className={`h-full rounded-full ${getUvColor(current.uvIndex)}`} style={{ width: `${Math.min((current.uvIndex / 11) * 100, 100)}%` }}/>
+                  </div>
+                </div>
+              }
+          />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card index={1} float className="p-8 flex flex-col justify-center">
             <Quote className="w-7 h-7 text-primary/40 mb-4"/>
@@ -369,13 +457,15 @@ export function WeatherDashboard({ data, dayPhase }: WeatherDashboardProps) {
         })()}
 
         
-        <Card index={6} premium className="p-6 md:p-8 overflow-hidden">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-serif font-semibold flex items-center gap-3 text-foreground/90">
-              <Cloud className="w-5 h-5 text-primary"/> Hourly timeline
-            </h3>
-          </div>
-          <HourlyForecastCinematic hourly={hourly} convertTemp={convertTemp} tempSuffix={tempSuffix}/>
+        <Card index={6} premium className="!border-none !bg-transparent !p-0 !shadow-none !ring-0">
+          <HourlyForecastCinematic
+              hourly={hourly}
+              convertTemp={convertTemp}
+              tempSuffix={tempSuffix}
+              dayPhase={dayPhase}
+              conditionCode={heroConditionCode}
+              windSpeedKmh={current.windSpeed}
+          />
         </Card>
       </div>
 
