@@ -38,5 +38,5 @@ Keep the Vercel project **root directory** as the repository root (not `artifact
 
 ## Author
 
-NeoSalviJo  
+Joanna Moran (NeoSalviJo)  
 GitHub: [github.com/NeoSalviJo](https://github.com/NeoSalviJo)
